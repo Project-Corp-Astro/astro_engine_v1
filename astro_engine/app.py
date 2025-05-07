@@ -6,6 +6,21 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import swisseph as swe
 
+from astro_engine.engine.ashatakavargha.Binnastakavargha import astro_utils_calculate_ascendant, astro_utils_calculate_bhinnashtakavarga, astro_utils_calculate_planet_positions, astro_utils_format_dms, astro_utils_get_julian_day, astro_utils_get_sign_index, astro_utils_validate_totals
+from astro_engine.engine.ashatakavargha.Sarvasthakavargha import astro_utils_calculate_positions, astro_utils_calculate_sarvashtakavarga, astro_utils_map_to_houses
+from astro_engine.engine.lagnaCharts.ArudhaLagna import LORDS, SWE_PLANETS, ZODIAC_SIGNS, calculate_planet_data, get_arudha_lagna
+from astro_engine.engine.lagnaCharts.KPLagna import PLANETS, convert_to_julian_day, determine_significators, fetch_house_cusps, fetch_planet_positions, identify_nakshatra, identify_sign, identify_sub_lord, map_planets_to_houses
+
+
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
+logging.basicConfig(level=logging.DEBUG)
+
+
+# from astro_engine.engine.ashatakavargha.Binnastakavargha import bv_calculate_ascendant, bv_calculate_ayanamsa, bv_calculate_bhinnashtakavarga_matrix, bv_calculate_sidereal_longitude, bv_format_dms, bv_get_julian_day, bv_get_sign_index, bv_validate_totals
+
+# from astro_engine.engine.ashatakavargha.Binnastakavargha import bv_calculate_ascendant, bv_calculate_ayanamsa, bv_calculate_bhinnashtakavarga_matrix, bv_calculate_sidereal_longitude, bv_format_dms, bv_get_julian_day, bv_get_sign_index, bv_validate_totals
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
 from astro_engine.engine.dashas.Pratyantardashas import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
 from astro_engine.engine.dashas.Sookashama import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
@@ -13,9 +28,6 @@ from astro_engine.engine.divisionalCharts.AkshavedamshaD45 import calculate_d45_
 from astro_engine.engine.divisionalCharts.SaptavimshamshaD27 import SIGN_NAMES, calculate_d1_positions, calculate_d27_houses, calculate_d27_positions
 from astro_engine.engine.divisionalCharts.ShashtiamshaD60 import calculate_d60_chart
 from astro_engine.engine.divisionalCharts.VimshamshaD20 import calculate_d20_chart
-# from astro_engine.engine.lagnaCharts.ArudhaLagna import LORDS, SWE_PLANETS, ZODIAC_SIGNS, calculate_planet_data, get_arudha_lagna
-from astro_engine.engine.lagnaCharts.BavaLagna import PLANET_IDS, calculate_bhava_lagna, calculate_house, calculate_sunrise, get_sign_and_degrees
-# from astro_engine.engine.lagnaCharts.KPLagna import PLANETS, calculate_house_cusps, calculate_planet_positions, calculate_significators, get_nakshatra, get_sub_lord
 from astro_engine.engine.natalCharts.SudharashanaChakara import calculate_sidereal_positions, generate_chart, get_sign
 from astro_engine.engine.natalCharts.SunChart import assign_planets_to_houses, calculate_planetary_positions, calculate_whole_sign_cusps, validate_input
 from astro_engine.engine.natalCharts.MoonChart import assign_planets_to_houses, calculate_whole_sign_cusps, format_dms, get_julian_day
@@ -44,6 +56,11 @@ swe.set_ephe_path('astro_engine/ephe')
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+
+# *********************************************************************************************************
+# ***********************************  Divisional Charts ********************************************
+# *********************************************************************************************************
 
 
 # Natal Chart
@@ -936,9 +953,10 @@ def navamsa_chart():
 
 
 
+# *********************************************************************************************************
+# **************************************  Lagna Charts ****************************************************
+# *********************************************************************************************************
 
-
-# *************************  Lagna Charts ***********************************
 
 # Sripathi Bhava 
 @app.route('/calculate_sripathi_bhava', methods=['POST'])
@@ -988,12 +1006,141 @@ def calculate_sripathi_bhava():
 
 #   KP Bhava
 
-   
+@app.route('/calculate_kp_bhava', methods=['POST'])
+def process_kp_bhava():
+    """Process birth details to compute KP Bhava Chart."""
+    data = request.get_json()
+    try:
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        jd = convert_to_julian_day(birth_date, birth_time, tz_offset)
+        planet_positions = fetch_planet_positions(jd)
+        house_cusps = fetch_house_cusps(jd, latitude, longitude)
+        house_assignments = map_planets_to_houses(planet_positions, house_cusps)
+        significators = determine_significators(planet_positions, house_cusps)
+
+        planet_details = {}
+        for planet in PLANETS:
+            pos = planet_positions[planet]
+            planet_details[planet] = {
+                'longitude': round(pos, 4),
+                'sign': identify_sign(pos),
+                'nakshatra': identify_nakshatra(pos),
+                'sub_lord': identify_sub_lord(pos),
+                'house': house_assignments.get(planet, None),
+                'retrograde': planet_positions.get(f"{planet}_retro", False)
+            }
+
+        cusp_details = []
+        for i, cusp in enumerate(house_cusps, 1):
+            cusp_details.append({
+                'house': i,
+                'longitude': round(cusp, 4),
+                'sign': identify_sign(cusp),
+                'nakshatra': identify_nakshatra(cusp),
+                'sub_lord': identify_sub_lord(cusp)
+            })
+
+        lagna_longitude = house_cusps[0]
+        lagna_sign = identify_sign(lagna_longitude)
+
+        response = {
+            'user_name': user_name,
+            'lagna_sign': lagna_sign,
+            'house_cusps': cusp_details,
+            'planetary_positions': planet_details,
+            'significators': significators
+        }
+        return jsonify(response), 200
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing input field: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": f"Invalid input value: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
 
 
 #  Arudha  Lagna :
 
+@app.route('/calculate_arudha_lagna', methods=['POST'])
+def calculate_arudha_lagna():
+    """Calculate Arudha Lagna chart with retrograde status."""
+    try:
+        data = request.get_json()
+        if not data:
+            logging.error("No JSON data provided")
+            return jsonify({"error": "No JSON data provided"}), 400
 
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            logging.error("Missing required fields")
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day
+        jd = get_julian_day(birth_date, birth_time, tz_offset)
+
+        # Calculate sidereal Ascendant and its sign
+        asc_lon = calculate_ascendant(jd, latitude, longitude)
+        asc_sign = get_sign(asc_lon)
+
+        # Calculate planetary positions and retrograde status
+        planet_data = {}
+        for planet, code in zip(PLANETS, SWE_PLANETS):
+            if planet == 'Ketu':
+                rahu_lon, rahu_retro = calculate_planet_data(jd, swe.MEAN_NODE)
+                ketu_lon = (rahu_lon + 180) % 360
+                ketu_retro = rahu_retro  # Ketu retrogrades with Rahu
+                planet_data[planet] = {'longitude': ketu_lon, 'sign': get_sign(ketu_lon), 'retrograde': ketu_retro}
+            else:
+                lon, retro = calculate_planet_data(jd, code)
+                planet_data[planet] = {'longitude': lon, 'sign': get_sign(lon), 'retrograde': retro}
+
+        # Determine Lagna lord and its sign
+        lagna_lord = LORDS[asc_sign]
+        lord_sign = planet_data[lagna_lord]['sign']
+
+        # Calculate Arudha Lagna
+        al_sign = get_arudha_lagna(asc_sign, lord_sign)
+
+        # Construct AL chart with houses relative to Arudha Lagna
+        al_index = ZODIAC_SIGNS.index(al_sign)
+        al_houses = {}
+        for planet, data in planet_data.items():
+            sign = data['sign']
+            sign_index = ZODIAC_SIGNS.index(sign)
+            house = (sign_index - al_index) % 12 + 1
+            al_houses[planet] = {'sign': sign, 'house': house, 'retrograde': data['retrograde']}
+
+        # Construct response
+        response = {
+            'user_name': user_name,
+            'arudha_lagna': al_sign,
+            'planets': al_houses,
+            'metadata': {
+                'ayanamsa': 'Lahiri',
+                'calculation_time': datetime.utcnow().isoformat(),
+                'input': data
+            }
+        }
+        logging.info(f"Successfully calculated Arudha Lagna for {user_name}")
+        return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Calculation error: {str(e)}")
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
 #  Bava Lagan
@@ -1054,6 +1201,11 @@ def calculate_bhava_lagna_chart():
         logging.error(f"Error in calculation: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
+
+# *********************************************************************************************************
+# ***********************************  Mobile services  Charts ********************************************
+# *********************************************************************************************************
 
 
 @app.route('/synastry', methods=['POST'])
@@ -1170,7 +1322,10 @@ def numerology():
 
 
 
-# *************************     Vimshottari Dashas    ***********************************
+# *********************************************************************************************************
+# ***********************************  Vimshottari Dashas ************************************************
+# *********************************************************************************************************
+
 
 #   Vimshottari Mahadasha and Antardashas
 @app.route('/calculate_maha_antar_dasha', methods=['POST'])
@@ -1362,6 +1517,141 @@ def calculate_vimshottari_Sookshama():
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+# *********************************************************************************************************
+# *********************************** Astakavarghas ************************************************
+# *********************************************************************************************************
+
+
+#  Binnastakavargha 
+@app.route('/calculate_binnashtakavarga', methods=['POST'])
+def ashtakavarga_api_calculate_ashtakavarga():
+    """Calculate Ashtakavarga chart from birth details and return JSON with Ascendant details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day
+        jd = astro_utils_get_julian_day(birth_date, birth_time, tz_offset)
+
+        # Calculate sidereal Ascendant and its sign
+        asc_lon = astro_utils_calculate_ascendant(jd, latitude, longitude)
+        asc_sign_index = astro_utils_get_sign_index(asc_lon)
+        asc_sign = ZODIAC_SIGNS[asc_sign_index]
+
+        # Calculate planetary positions
+        positions = astro_utils_calculate_planet_positions(jd)
+        positions['Ascendant'] = {'longitude': asc_lon, 'sign_index': asc_sign_index}
+
+        # Calculate Bhinnashtakavarga
+        bhinnashtakavarga = astro_utils_calculate_bhinnashtakavarga(positions)
+        astro_utils_validate_totals(bhinnashtakavarga)
+
+        # Format output
+        bhinnashtakavarga_output = {
+            target: {
+                "signs": {ZODIAC_SIGNS[i]: bindus[i] for i in range(12)},
+                "total_bindus": sum(bindus)
+            } for target, bindus in bhinnashtakavarga.items()
+        }
+
+        # Format Ascendant degrees within the sign
+        asc_degrees = astro_utils_format_dms(asc_lon % 30)
+
+        # Construct response
+        response = {
+            'user_name': user_name,
+            'ascendant': {
+                'degrees': asc_degrees,
+                'sign': asc_sign
+            },
+            'bhinnashtakavarga': bhinnashtakavarga_output,
+            'metadata': {
+                'ayanamsa': 'Lahiri',
+                'calculation_time': datetime.utcnow().isoformat(),
+                'input': data
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
+# Sarvathkavargha 
+
+
+@app.route('/calculate_sarvashtakavarga', methods=['POST'])
+def sarvashtakavarga_api_calculate_sarvashtakavarga():
+    """Calculate Sarvashtakavarga from birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day
+        jd = astro_utils_get_julian_day(birth_date, birth_time, tz_offset)
+
+        # Calculate sidereal Ascendant and its sign index
+        asc_lon = astro_utils_calculate_ascendant(jd, latitude, longitude)
+        asc_sign_index = astro_utils_get_sign_index(asc_lon)
+
+        # Calculate positions of planets and ascendant
+        positions = astro_utils_calculate_positions(jd, asc_lon)
+
+        # Calculate Bhinnashtakavarga
+        bhinnashtakavarga = astro_utils_calculate_bhinnashtakavarga(positions)
+
+        # Calculate Sarvashtakavarga
+        sarvashtakavarga = astro_utils_calculate_sarvashtakavarga(bhinnashtakavarga)
+
+        # Map Sarvashtakavarga to houses
+        house_bindus = astro_utils_map_to_houses(sarvashtakavarga, asc_sign_index)
+
+        # Prepare response
+        response = {
+            'user_name': user_name,
+            'sarvashtakavarga': {
+                'signs': {SIGNS[i]: sarvashtakavarga[i] for i in range(12)},
+                'houses': house_bindus,
+                'total_bindus': sum(sarvashtakavarga)
+            },
+            'metadata': {
+                'ayanamsa': 'Lahiri',
+                'calculation_time': datetime.utcnow().isoformat(),
+                'input': data
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
 
 
 if __name__ == "__main__":
