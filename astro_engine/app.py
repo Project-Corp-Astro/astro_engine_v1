@@ -6,7 +6,11 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import swisseph as swe
 
+from astro_engine.engine.kpSystem.charts.CupsalChart import cupsal_assign_nakshatra_and_lords, cupsal_assign_planet_to_house, cupsal_calculate_ascendant_and_cusps, cupsal_calculate_kp_new_ayanamsa, cupsal_calculate_planet_positions, cupsal_calculate_significators, cupsal_format_dms, cupsal_get_julian_day
+from astro_engine.engine.kpSystem.charts.RulingPlanets import ruling_calculate_ascendant_and_cusps, ruling_calculate_balance_of_dasha, ruling_calculate_fortuna, ruling_calculate_jd, ruling_calculate_planet_positions, ruling_check_rahu_ketu, ruling_compile_core_rp, ruling_get_day_lord, ruling_get_details
+from astro_engine.engine.lagnaCharts.BavaLagna import  bava_calculate_bhava_lagna
 from astro_engine.engine.lagnaCharts.EqualLagan import bava_assign_planets_to_houses, bava_calculate_ascendant, bava_calculate_equal_bhava_cusps, bava_format_dms, bava_get_julian_day, bava_get_planet_positions
+from astro_engine.engine.lagnaCharts.KPLagna import PLANETS, convert_to_julian_day, determine_significators, fetch_house_cusps, fetch_planet_positions, identify_nakshatra, identify_sign, identify_sub_lord, map_planets_to_houses
 from astro_engine.engine.numerology.LoShuGridNumerology import calculate_lo_shu_grid
 
 app = Flask(__name__)
@@ -1165,62 +1169,34 @@ def bava_calculate_endpoint():
 
 
 #  Bava Lagan : 
-@app.route('/calculate_bhava_lagna', methods=['POST'])
-def calculate_bhava_lagna_chart():
-    try:
-        # Parse and validate input
-        data = request.get_json()
-        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-        if not data or not all(k in data for k in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
 
+@app.route('/calculate_bhava_lagna', methods=['POST'])
+def calculate_bhava_lagna_route():
+    try:
+        data = request.get_json()
+        user_name = data['user_name']
         birth_date = data['birth_date']
         birth_time = data['birth_time']
-        lat = float(data['latitude'])
-        lon = float(data['longitude'])
-        tz_offset = float(data['timezone_offset'])
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
 
-        # Calculate Julian Day
-        birth_jd = get_julian_day(birth_date, birth_time, tz_offset)
+        result = bava_calculate_bhava_lagna(birth_date, birth_time, latitude, longitude, timezone_offset)
 
-        # Calculate sunrise and Sun’s position
-        sunrise_jd, sunrise_sun_lon = calculate_sunrise(birth_jd, lat, lon, tz_offset)
-
-        # Calculate Bhava Lagna
-        bl_lon = calculate_bhava_lagna(birth_jd, sunrise_jd, sunrise_sun_lon)
-        bl_sign, bl_degrees = get_sign_and_degrees(bl_lon)
-
-        # Calculate planetary positions
-        positions = {}
-        for planet, pid in PLANET_IDS.items():
-            if planet == 'Ketu':
-                continue
-            pos_data = swe.calc_ut(birth_jd, pid, swe.FLG_SIDEREAL | swe.FLG_SPEED)[0]
-            lon = pos_data[0] % 360
-            sign, degrees = get_sign_and_degrees(lon)
-            retrograde = 'R' if pos_data[3] < 0 else ''
-            house = calculate_house(sign, bl_sign)
-            positions[planet] = {"degrees": round(degrees, 4), "sign": sign, "retrograde": retrograde, "house": house}
-
-        # Calculate Ketu (opposite Rahu)
-        rahu_lon = positions['Rahu']['degrees'] + (SIGNS.index(positions['Rahu']['sign']) * 30)
-        ketu_lon = (rahu_lon + 180) % 360
-        ketu_sign, ketu_degrees = get_sign_and_degrees(ketu_lon)
-        positions['Ketu'] = {
-            "degrees": round(ketu_degrees, 4), "sign": ketu_sign, "retrograde": "", 
-            "house": calculate_house(ketu_sign, bl_sign)
-        }
-
-        # Response
         response = {
-            "bhava_lagna": {"sign": bl_sign, "degrees": round(bl_degrees, 4)},
-            "planets": positions
+            "user_name": user_name,
+            "result": result,
+            "metadata": {
+                "ayanamsa": "Lahiri",
+                "house_system": "Whole Sign",
+                "calculation_time": datetime.utcnow().isoformat()
+            }
         }
         return jsonify(response), 200
 
     except Exception as e:
-        logging.error(f"Error in calculation: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+
 
 
 
@@ -1729,6 +1705,168 @@ def ashtakavarga_api_calculate_ashtakavarga():
 
 
 # Sarvathkavargha 
+
+
+
+
+# *********************************************************************************************************
+# *********************************** KP Systems ************************************************
+# *********************************************************************************************************
+
+
+#   Cupsal Chart 
+@app.route('/calculate_kp_planets_cusps', methods=['POST'])
+def calculate_kp_planets_cusps():
+    """Calculate KP System Planets and Cusps based on input JSON."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Extract input data
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Step 1: Calculate Julian Day
+        jd = cupsal_get_julian_day(birth_date, birth_time, tz_offset)
+
+        # Step 2: Calculate KP New Ayanamsa
+        kp_new_ayanamsa = cupsal_calculate_kp_new_ayanamsa(jd)
+
+        # Step 3: Calculate Ascendant and house cusps
+        ascendant, house_cusps = cupsal_calculate_ascendant_and_cusps(jd, latitude, longitude, kp_new_ayanamsa)
+
+        # Step 4: Calculate planetary positions
+        planets = cupsal_calculate_planet_positions(jd, kp_new_ayanamsa)
+
+        # Step 5: Assign Nakshatra and lords for planets and cusps
+        planet_details = {
+            planet: {
+                "longitude": cupsal_format_dms(lon),
+                "sign": ZODIAC_SIGNS[int(lon // 30)],
+                "nakshatra": cupsal_assign_nakshatra_and_lords(lon)[0],
+                "star_lord": cupsal_assign_nakshatra_and_lords(lon)[1],
+                "sub_lord": cupsal_assign_nakshatra_and_lords(lon)[2],
+                "house": cupsal_assign_planet_to_house(lon, house_cusps)
+            }
+            for planet, lon in planets.items()
+        }
+
+        cusp_details = {
+            str(i + 1): {
+                "longitude": cupsal_format_dms(cusp),
+                "sign": ZODIAC_SIGNS[int(cusp // 30)],
+                "nakshatra": cupsal_assign_nakshatra_and_lords(cusp)[0],
+                "star_lord": cupsal_assign_nakshatra_and_lords(cusp)[1],
+                "sub_lord": cupsal_assign_nakshatra_and_lords(cusp)[2]
+            }
+            for i, cusp in enumerate(house_cusps)
+        }
+
+        # Step 6: Calculate significators
+        significators = cupsal_calculate_significators(planets, house_cusps)
+
+        # Construct response
+        response = {
+            "user_name": user_name,
+            "ascendant": {
+                "longitude": cupsal_format_dms(ascendant),
+                "sign": ZODIAC_SIGNS[int(ascendant // 30)]
+            },
+            "house_cusps": cusp_details,
+            "planets": planet_details,
+            "significators": significators,
+            "metadata": {
+                "ayanamsa": "KP New",
+                "house_system": "Placidus",
+                "calculation_time": datetime.utcnow().isoformat(),
+                "input": data
+            }
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+
+
+
+#  Ruling Planets :
+
+@app.route('/calculate_ruling_planets', methods=['POST'])
+def calculate_ruling_planets():
+    try:
+        # Parse input JSON
+        data = request.get_json()
+        birth_date = data['birth_date']  # e.g., "1998-10-15"
+        birth_time = data['birth_time']  # e.g., "10:40:30"
+        latitude = float(data['latitude'])  # e.g., 17.3850 (Hyderabad)
+        longitude = float(data['longitude'])  # e.g., 78.4867
+        timezone_offset = float(data['timezone_offset'])  # e.g., 5.5 for IST
+
+        # Calculate Julian Day and UTC datetime
+        jd, utc_dt = ruling_calculate_jd(birth_date, birth_time, timezone_offset)
+
+        # Calculate Ascendant and house cusps
+        ascendant, cusps = ruling_calculate_ascendant_and_cusps(jd, latitude, longitude)
+
+        # Calculate planetary positions
+        sun_pos, moon_pos, rahu_pos, ketu_pos = ruling_calculate_planet_positions(jd)
+
+        # Determine Day Lord
+        day_lord = ruling_get_day_lord(utc_dt)
+
+        # Get Lagna details
+        lagna_sign, lagna_rashi_lord, lagna_nakshatra, lagna_star_lord, lagna_sub_lord = ruling_get_details(ascendant)
+
+        # Get Moon details
+        moon_sign, moon_rashi_lord, moon_nakshatra, moon_star_lord, moon_sub_lord = ruling_get_details(moon_pos)
+
+        # Compile core Ruling Planets
+        lagna_details = {'rashi_lord': lagna_rashi_lord, 'star_lord': lagna_star_lord, 'sub_lord': lagna_sub_lord}
+        moon_details = {'rashi_lord': moon_rashi_lord, 'star_lord': moon_star_lord, 'sub_lord': moon_sub_lord}
+        core_rp = ruling_compile_core_rp(lagna_details, moon_details, day_lord)
+
+        # Check for Rahu/Ketu inclusion
+        core_rp = ruling_check_rahu_ketu(rahu_pos, ketu_pos, core_rp)
+
+        # Calculate Fortuna
+        fortuna = ruling_calculate_fortuna(ascendant, moon_pos, sun_pos)
+
+        # Calculate Balance of Dasha
+        dasha_lord, balance_years = ruling_calculate_balance_of_dasha(moon_pos, moon_star_lord)
+
+        # Prepare Response
+        response = {
+            "ruling_planets": list(core_rp),
+            "details": {
+                "day_lord": day_lord,
+                "lagna_lord": lagna_rashi_lord,
+                "lagna_nakshatra_lord": lagna_star_lord,
+                "lagna_sub_lord": lagna_sub_lord,
+                "moon_rashi_lord": moon_rashi_lord,
+                "moon_nakshatra_lord": moon_star_lord,
+                "moon_sub_lord": moon_sub_lord,
+                "fortuna": round(fortuna, 4),
+                "balance_of_dasha": {
+                    "dasha_lord": dasha_lord,
+                    "balance_years": round(balance_years, 4)
+                }
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 
