@@ -6,8 +6,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import swisseph as swe
 
+from astro_engine.engine.kpSystem.charts.BhavaHouses import calculate_bhava_houses_details
 from astro_engine.engine.kpSystem.charts.CupsalChart import cupsal_assign_nakshatra_and_lords, cupsal_assign_planet_to_house, cupsal_calculate_ascendant_and_cusps, cupsal_calculate_kp_new_ayanamsa, cupsal_calculate_planet_positions, cupsal_calculate_significators, cupsal_format_dms, cupsal_get_julian_day
 from astro_engine.engine.kpSystem.charts.RulingPlanets import ruling_calculate_ascendant_and_cusps, ruling_calculate_balance_of_dasha, ruling_calculate_fortuna, ruling_calculate_jd, ruling_calculate_planet_positions, ruling_check_rahu_ketu, ruling_compile_core_rp, ruling_get_day_lord, ruling_get_details
+from astro_engine.engine.kpSystem.charts.SignificatorHouse import calculate_planets_significations
 from astro_engine.engine.lagnaCharts.BavaLagna import  bava_calculate_bhava_lagna
 from astro_engine.engine.lagnaCharts.EqualLagan import bava_assign_planets_to_houses, bava_calculate_ascendant, bava_calculate_equal_bhava_cusps, bava_format_dms, bava_get_julian_day, bava_get_planet_positions
 from astro_engine.engine.lagnaCharts.KPLagna import PLANETS, convert_to_julian_day, determine_significators, fetch_house_cusps, fetch_planet_positions, identify_nakshatra, identify_sign, identify_sub_lord, map_planets_to_houses
@@ -20,7 +22,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 from astro_engine.engine.ashatakavargha.Binnastakavargha import ZODIAC_SIGNS, astro_binna_calculate_ascendant, astro_binna_get_julian_day, astro_binna_get_sign_index,  astro_utils_calculate_bhinnashtakavarga, astro_utils_calculate_planet_positions, astro_utils_format_dms,  astro_utils_validate_totals
-
 
 from astro_engine.engine.numerology.NumerologyData import (
     calculate_chaldean_numbers, calculate_date_numerology, get_sun_sign,
@@ -1801,7 +1802,6 @@ def calculate_kp_planets_cusps():
 
 
 #  Ruling Planets :
-
 @app.route('/calculate_ruling_planets', methods=['POST'])
 def calculate_ruling_planets():
     try:
@@ -1867,6 +1867,82 @@ def calculate_ruling_planets():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+
+
+# Flask Route to Calculate Bhava Details
+@app.route('/calculate_bhava_details', methods=['POST'])
+def calculate_bhava_details():
+    try:
+        # Parse input JSON
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Extract input data
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Calculate Bhava details using the function from calculations.py
+        bhava_details = calculate_bhava_houses_details(birth_date, birth_time, latitude, longitude, timezone_offset)
+
+        # Prepare and return response
+        response = {
+            'user_name': user_name,
+            'bhava_details': bhava_details
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+
+
+# Flask Route to Calculate House Significations
+@app.route('/calculate_significations', methods=['POST'])
+def calculate_significations():
+    try:
+        # Parse input JSON
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Extract input data
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Calculate significations using the function from calculations.py
+        significators = calculate_planets_significations(birth_date, birth_time, latitude, longitude, timezone_offset)
+
+        # Prepare and return response
+        response = {
+            'user_name': user_name,
+            'house_significations': significators
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+
 
 
 
