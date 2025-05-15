@@ -1,30 +1,58 @@
-# calculations.py
+
+
+
+
 import swisseph as swe
 from datetime import datetime, timedelta
 import math
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Set ephemeris path and sidereal mode to Lahiri ayanamsa
+swe.set_ephe_path('astro_api/ephe')
+swe.set_sid_mode(swe.SIDM_LAHIRI)
 
-# Constants
+# Define planets and corresponding Swiss Ephemeris constants
 PLANETS = {
     'Sun': swe.SUN, 'Moon': swe.MOON, 'Mercury': swe.MERCURY, 'Venus': swe.VENUS,
     'Mars': swe.MARS, 'Jupiter': swe.JUPITER, 'Saturn': swe.SATURN, 'Uranus': swe.URANUS,
     'Neptune': swe.NEPTUNE, 'Pluto': swe.PLUTO, 'North Node': swe.MEAN_NODE
 }
+
+# Sidereal zodiac signs
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio',
          'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
-ASPECTS = {
-    'Conjunction': {'angle': 0, 'orb': 8},
-    'Sextile': {'angle': 60, 'orb': 6},
-    'Square': {'angle': 90, 'orb': 8},
-    'Trine': {'angle': 120, 'orb': 8},
-    'Opposition': {'angle': 180, 'orb': 8}
-}
 
-# Detailed astrological interpretations
+# Nakshatras with their longitude ranges (start, end in degrees)
+NAKSHATRAS = [
+    ('Ashwini', 0, 13.3333),
+    ('Bharani', 13.3333, 26.6667),
+    ('Krittika', 26.6667, 40),
+    ('Rohini', 40, 53.3333),
+    ('Mrigashira', 53.3333, 66.6667),
+    ('Ardra', 66.6667, 80),
+    ('Punarvasu', 80, 93.3333),
+    ('Pushya', 93.3333, 106.6667),
+    ('Ashlesha', 106.6667, 120),
+    ('Magha', 120, 133.3333),
+    ('Purva Phalguni', 133.3333, 146.6667),
+    ('Uttara Phalguni', 146.6667, 160),
+    ('Hasta', 160, 173.3333),
+    ('Chitra', 173.3333, 186.6667),
+    ('Swati', 186.6667, 200),
+    ('Vishakha', 200, 213.3333),
+    ('Anuradha', 213.3333, 226.6667),
+    ('Jyeshtha', 226.6667, 240),
+    ('Mula', 240, 253.3333),
+    ('Purva Ashadha', 253.3333, 266.6667),
+    ('Uttara Ashadha', 266.6667, 280),
+    ('Shravana', 280, 293.3333),
+    ('Dhanishta', 293.3333, 306.6667),
+    ('Shatabhisha', 306.6667, 320),
+    ('Purva Bhadrapada', 320, 333.3333),
+    ('Uttara Bhadrapada', 333.3333, 346.6667),
+    ('Revati', 346.6667, 360)
+]
+
+# Original astrological interpretations (unchanged)
 SUN_INTERPRETATIONS = {
     'Aries': "Your core essence radiates with courage and initiative, urging you to lead and forge new paths with confidence.",
     'Taurus': "A steady, grounded energy shapes your identity, drawing you toward security, beauty, and tangible achievements.",
@@ -85,6 +113,14 @@ HOUSE_INTERPRETATIONS = {
     12: "Spirituality, solitude, and the subconscious unfold quietly."
 }
 
+ASPECTS = {
+    'Conjunction': {'angle': 0, 'orb': 8},
+    'Sextile': {'angle': 60, 'orb': 6},
+    'Square': {'angle': 90, 'orb': 8},
+    'Trine': {'angle': 120, 'orb': 8},
+    'Opposition': {'angle': 180, 'orb': 8}
+}
+
 ASPECT_INTERPRETATIONS = {
     'Conjunction': "Energies merge intensely, creating a potent fusion that amplifies both strengths and challenges.",
     'Sextile': "A gentle harmony offers opportunities for growth, blending talents with ease and grace.",
@@ -93,6 +129,7 @@ ASPECT_INTERPRETATIONS = {
     'Opposition': "Polarities call for balance, challenging you to integrate opposites for greater wholeness."
 }
 
+# Original calculation functions (unchanged)
 def get_julian_day(date_str, time_str, tz_offset):
     """Convert date, time, and timezone offset to Julian Day."""
     dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
@@ -201,42 +238,77 @@ def interpret_aspects(aspects):
         interpretations.append(f"Progressed {prog} {asp_type} Natal {natal}: {interp}")
     return interpretations
 
-def calculate_progressed_chart(data):
-    """
-    Calculate and return a sidereal progressed chart with interpretations.
-    
-    Parameters:
-    - data: Dictionary containing birth_date, birth_time, latitude, longitude, tz_offset, age.
-    
-    Returns:
-    - Dictionary containing the progressed chart data or raises an exception on error.
-    """
-    birth_date = data['birth_date']
-    birth_time = data['birth_time']
-    latitude = float(data['latitude'])
-    longitude = float(data['longitude'])
-    tz_offset = float(data['tz_offset'])
-    age = float(data['age'])
+# New function to calculate nakshatra and pada
+def get_nakshatra_pada(longitude):
+    """Calculate nakshatra and pada for a given longitude."""
+    longitude = longitude % 360
+    for name, start, end in NAKSHATRAS:
+        if start <= longitude < end:
+            position_in_nakshatra = longitude - start
+            pada = math.ceil(position_in_nakshatra / 3.3333)  # Each pada is 3°20' (3.3333°)
+            return name, pada
+    if math.isclose(longitude, 360, rel_tol=1e-5):
+        return 'Revati', 4
+    raise ValueError(f"Longitude {longitude} not in any nakshatra range")
 
+# Main function as requested
+def lahairi_progress(birth_date, birth_time, latitude, longitude, tz_offset, age):
+    """Calculate progressed chart data with retrograde, nakshatras, and padas."""
     # Calculate Julian Days
     natal_jd = get_julian_day(birth_date, birth_time, tz_offset)
     progressed_jd = natal_jd + age  # Secondary progression: 1 day = 1 year
-
-    # Compute positions
+    
+    # Compute natal positions (unchanged)
     natal_positions = calculate_planetary_positions(natal_jd)
-    prog_positions = calculate_planetary_positions(progressed_jd)
-
+    
+    # Compute progressed positions with retrograde, nakshatra, and pada
+    prog_positions = {}
+    for planet_name, planet_id in PLANETS.items():
+        result = swe.calc_ut(progressed_jd, planet_id, swe.FLG_SIDEREAL)
+        lon = result[0][0]
+        speed = result[0][3]  # Longitude speed to determine retrograde
+        retrograde = speed < 0
+        base_data = format_position(lon)
+        nakshatra, pada = get_nakshatra_pada(lon)
+        prog_positions[planet_name] = {
+            **base_data,
+            'retrograde': retrograde,
+            'nakshatra': nakshatra,
+            'pada': pada
+        }
+    # South Node (always retrograde)
+    nn_lon = prog_positions['North Node']['longitude']
+    sn_lon = (nn_lon + 180) % 360
+    base_data = format_position(sn_lon)
+    nakshatra, pada = get_nakshatra_pada(sn_lon)
+    prog_positions['South Node'] = {
+        **base_data,
+        'retrograde': True,
+        'nakshatra': nakshatra,
+        'pada': pada
+    }
+    
     # Compute angles
     asc, mc = calculate_angles(progressed_jd, latitude, longitude)
     asc_sign_idx = int(asc // 30)
-    prog_positions['Ascendant'] = format_position(asc)
-
+    prog_asc = format_position(asc)
+    prog_mc = format_position(mc)
+    
+    # Add nakshatra and pada to Ascendant and Midheaven
+    asc_nakshatra, asc_pada = get_nakshatra_pada(asc)
+    mc_nakshatra, mc_pada = get_nakshatra_pada(mc)
+    prog_asc.update({'nakshatra': asc_nakshatra, 'pada': asc_pada})
+    prog_mc.update({'nakshatra': mc_nakshatra, 'pada': mc_pada})
+    
+    # Add Ascendant to progressed positions (no retrograde for angles)
+    prog_positions['Ascendant'] = prog_asc
+    
     # Assign houses
     houses = assign_planets_to_houses(prog_positions, asc_sign_idx)
-
+    
     # Calculate aspects
     aspects = calculate_aspects(prog_positions, natal_positions)
-
+    
     # Generate interpretations
     interpretations = {
         'sun': interpret_sun(prog_positions['Sun']['sign'], houses['Sun']),
@@ -244,13 +316,14 @@ def calculate_progressed_chart(data):
         'ascendant': interpret_ascendant(prog_positions['Ascendant']['sign']),
         'aspects': interpret_aspects(aspects)
     }
-
-    # Structure response
-    response = {
-        'progressed_planets': prog_positions,
-        'progressed_ascendant': format_position(asc),
-        'progressed_midheaven': format_position(mc),
+    
+    # Structure response data
+    response_data = {
+        'prog_positions': prog_positions,
+        'prog_asc': prog_asc,
+        'prog_mc': prog_mc,
         'house_cusps': get_whole_sign_cusps(asc),
         'interpretations': interpretations
     }
-    return response
+    
+    return response_data

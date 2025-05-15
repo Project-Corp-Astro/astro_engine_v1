@@ -1,4 +1,3 @@
-# calculations.py
 import swisseph as swe
 from datetime import datetime, timedelta
 import math
@@ -6,6 +5,15 @@ import math
 # Zodiac signs
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+
+# Nakshatras
+NAKSHATRAS = [
+    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
+    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
+    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta',
+    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+]
 
 def get_julian_day(date_str, time_str, tz_offset):
     """Convert birth date, time, and timezone offset to Julian Day."""
@@ -29,31 +37,17 @@ def get_starting_sign_index(natal_sign_index):
 
 def get_d40_position(d1_sidereal_lon):
     """Calculate D40 position from D1 sidereal longitude."""
-    # Extract natal sign and degrees within it
     natal_sign_index = int(d1_sidereal_lon // 30) % 12
     natal_degrees = d1_sidereal_lon % 30
-    
-    # Convert to minutes
     total_minutes = natal_degrees * 60
     segment_size = 45  # 0°45' = 45 minutes
-    
-    # Calculate segment number (1 to 40)
     segment_number = math.ceil(total_minutes / segment_size)
-    
-    # Get starting sign index
     starting_sign_index = get_starting_sign_index(natal_sign_index)
-    
-    # Calculate D40 sign index
     d40_sign_index = (starting_sign_index + segment_number - 1) % 12
-    
-    # Calculate degrees within D40 sign
     segment_start = (segment_number - 1) * segment_size
     position_in_segment = total_minutes - segment_start
     d40_degrees = (position_in_segment / segment_size) * 30
-    
-    # Full D40 longitude
     d40_longitude = (d40_sign_index * 30) + d40_degrees
-    
     return {
         "sign": SIGNS[d40_sign_index],
         "degrees": format_dms(d40_degrees),
@@ -65,23 +59,20 @@ def get_d40_house(d40_sign_index, d40_asc_sign_index):
     """Assign house number using Whole Sign system."""
     return (d40_sign_index - d40_asc_sign_index) % 12 + 1
 
-def calculate_d40_chart(birth_date, birth_time, latitude, longitude, tz_offset):
-    """
-    Calculate the D40 chart based on birth data.
-    
-    Parameters:
-    - birth_date (str): Date in 'YYYY-MM-DD' format.
-    - birth_time (str): Time in 'HH:MM:SS' format.
-    - latitude (float): Latitude of birth location.
-    - longitude (float): Longitude of birth location.
-    - tz_offset (float): Timezone offset in hours.
-    
-    Returns:
-    - Dictionary containing the D40 chart data or raises an exception on error.
-    """
-    # Calculate Julian Day and set Lahiri ayanamsa
+def get_nakshatra_and_pada(sidereal_lon):
+    """Calculate nakshatra and pada from sidereal longitude."""
+    lon = sidereal_lon % 360
+    nakshatra_index = int(lon / (360 / 27))
+    position_in_nakshatra = lon % (360 / 27)
+    pada = int(position_in_nakshatra / (360 / 108)) + 1
+    return {"nakshatra": NAKSHATRAS[nakshatra_index], "pada": pada}
+
+def lahairi_Khavedamsha(birth_date, birth_time, latitude, longitude, tz_offset):
+    """Calculate the Lahiri Khavedamsha (D40) chart with retrograde, nakshatras, and padas."""
+    # Set ephemeris path and Lahiri ayanamsa
+    swe.set_ephe_path('astro_api/ephe')
     jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
-    swe.set_sid_mode(swe.SIDM_LAHIRI)  # Lahiri ayanamsa
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
 
     # Planetary positions in D1
     planets = [
@@ -98,7 +89,7 @@ def calculate_d40_chart(birth_date, birth_time, latitude, longitude, tz_offset):
         retro = 'R' if pos[3] < 0 else ''
         d1_positions[name] = (lon, retro)
 
-    # Calculate Ketu (180° opposite Rahu)
+    # Calculate Ketu
     rahu_lon = d1_positions['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
     d1_positions['Ketu'] = (ketu_lon, '')
@@ -110,18 +101,22 @@ def calculate_d40_chart(birth_date, birth_time, latitude, longitude, tz_offset):
     # D40 Ascendant
     d40_asc = get_d40_position(d1_asc_lon)
     d40_asc_sign_index = d40_asc['sign_index']
+    asc_nakshatra_pada = get_nakshatra_and_pada(d1_asc_lon)
 
     # D40 planetary positions
     d40_positions = {}
     for planet, (d1_lon, retro) in d1_positions.items():
         d40_pos = get_d40_position(d1_lon)
         house = get_d40_house(d40_pos['sign_index'], d40_asc_sign_index)
+        planet_nakshatra_pada = get_nakshatra_and_pada(d1_lon)
         d40_positions[planet] = {
             "sign": d40_pos['sign'],
             "degrees": d40_pos['degrees'],
             "retrograde": retro,
             "house": house,
-            "longitude": d40_pos['longitude']
+            "longitude": d40_pos['longitude'],
+            "nakshatra": planet_nakshatra_pada["nakshatra"],
+            "pada": planet_nakshatra_pada["pada"]
         }
 
     # House signs (Whole Sign system)
@@ -132,7 +127,9 @@ def calculate_d40_chart(birth_date, birth_time, latitude, longitude, tz_offset):
         "d40_ascendant": {
             "sign": d40_asc['sign'],
             "degrees": d40_asc['degrees'],
-            "longitude": d40_asc['longitude']
+            "longitude": d40_asc['longitude'],
+            "nakshatra": asc_nakshatra_pada["nakshatra"],
+            "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d40_positions,
         "house_signs": house_signs,

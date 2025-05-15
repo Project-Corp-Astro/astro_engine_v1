@@ -1,12 +1,11 @@
-# calculations.py
+
+
 import swisseph as swe
 from datetime import datetime, timedelta
 import math
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Set Swiss Ephemeris path (adjust path as needed)
+swe.set_ephe_path('astro_api/ephe')
 
 # Constants
 PLANETS = {
@@ -21,6 +20,36 @@ ASPECTS = {
 }
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio',
          'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+
+NAKSHATRAS = [
+    ('Ashwini', 0, 13.3333),
+    ('Bharani', 13.3333, 26.6667),
+    ('Krittika', 26.6667, 40),
+    ('Rohini', 40, 53.3333),
+    ('Mrigashira', 53.3333, 66.6667),
+    ('Ardra', 66.6667, 80),
+    ('Punarvasu', 80, 93.3333),
+    ('Pushya', 93.3333, 106.6667),
+    ('Ashlesha', 106.6667, 120),
+    ('Magha', 120, 133.3333),
+    ('Purva Phalguni', 133.3333, 146.6667),
+    ('Uttara Phalguni', 146.6667, 160),
+    ('Hasta', 160, 173.3333),
+    ('Chitra', 173.3333, 186.6667),
+    ('Swati', 186.6667, 200),
+    ('Vishakha', 200, 213.3333),
+    ('Anuradha', 213.3333, 226.6667),
+    ('Jyeshtha', 226.6667, 240),
+    ('Mula', 240, 253.3333),
+    ('Purva Ashadha', 253.3333, 266.6667),
+    ('Uttara Ashadha', 266.6667, 280),
+    ('Shravana', 280, 293.3333),
+    ('Dhanishta', 293.3333, 306.6667),
+    ('Shatabhisha', 306.6667, 320),
+    ('Purva Bhadrapada', 320, 333.3333),
+    ('Uttara Bhadrapada', 333.3333, 346.6667),
+    ('Revati', 346.6667, 360)
+]
 
 def get_julian_day(date_str, time_str, tz_offset):
     """Convert birth date, time, and timezone offset to Julian Day."""
@@ -40,19 +69,11 @@ def calculate_sidereal_position(jd, planet_id):
     """Calculate sidereal position for a planet using Lahiri ayanamsa."""
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     result = swe.calc_ut(jd, planet_id, swe.FLG_SIDEREAL)
-    logging.debug(f"Result from swe.calc_ut for planet {planet_id}: {result}")
-    
-    # Robust tuple handling
     try:
-        # swe.calc_ut typically returns (lon_data, ..., speed, ...)
-        # lon_data is a tuple (lon, lat, dist, ...) when FLG_SIDEREAL is used
-        lon = float(result[0][0])  # Extract longitude from first tuple element
-        # Speed is typically at index 3 for retrograde check
+        lon = float(result[0][0])
         retrograde = result[3] < 0 if len(result) > 3 and planet_id != swe.MEAN_NODE else False
     except (IndexError, TypeError) as e:
-        logging.error(f"Error parsing swe.calc_ut result {result}: {str(e)}")
         raise ValueError(f"Failed to extract longitude from {result} for planet {planet_id}")
-    
     return lon, retrograde
 
 def calculate_midpoint(lon1, lon2):
@@ -82,7 +103,6 @@ def calculate_planetary_positions(jd):
             'degree': format_degrees(degree_in_sign),
             'retrograde': retrograde
         }
-    # South Node as 180° opposite North Node
     nn_lon = positions['North Node']['longitude']
     sn_lon = (nn_lon + 180) % 360
     sign_idx = int(sn_lon // 30)
@@ -173,32 +193,32 @@ def validate_person_data(person_data, person_label):
         return False, f"Missing fields for {person_label}: {', '.join(missing)}"
     return True, None
 
-def calculate_composite_chart(data):
-    """
-    Calculate the composite chart for two individuals based on birth data.
-    
-    Parameters:
-    - data: Dictionary containing person_a and person_b data with date, time, lat, lon, tz_offset, and optional name.
-    
-    Returns:
-    - Dictionary containing the composite chart data or raises an exception on error.
-    """
-    # Extract data for Person A
-    person_a = data['person_a']
-    name_a = person_a.get('name', 'Person A')
-    jd_a = get_julian_day(person_a['date'], person_a['time'], float(person_a['tz_offset']))
-    lat_a = float(person_a['lat'])
-    lon_a = float(person_a['lon'])
+def get_nakshatra_pada(longitude):
+    """Calculate nakshatra and pada for a given longitude."""
+    longitude = longitude % 360
+    for name, start, end in NAKSHATRAS:
+        if start <= longitude < end:
+            position_in_nakshatra = longitude - start
+            pada = math.ceil(position_in_nakshatra / 3.3333)
+            return name, pada
+    if math.isclose(longitude, 360, rel_tol=1e-5):
+        return 'Revati', 4
+    raise ValueError(f"Longitude {longitude} not in any nakshatra range")
+
+def lahairi_composite(person_a_data, person_b_data):
+    """Calculate composite chart with nakshatras and padas using Lahiri ayanamsa."""
+    # Person A calculations
+    jd_a = get_julian_day(person_a_data['date'], person_a_data['time'], float(person_a_data['tz_offset']))
+    lat_a = float(person_a_data['lat'])
+    lon_a = float(person_a_data['lon'])
     pos_a = calculate_planetary_positions(jd_a)
     asc_a, mc_a, asc_sign_idx_a = calculate_ascendant_and_houses(jd_a, lat_a, lon_a)
     houses_a = assign_planets_to_houses(pos_a, asc_sign_idx_a)
 
-    # Extract data for Person B
-    person_b = data['person_b']
-    name_b = person_b.get('name', 'Person B')
-    jd_b = get_julian_day(person_b['date'], person_b['time'], float(person_b['tz_offset']))
-    lat_b = float(person_b['lat'])
-    lon_b = float(person_b['lon'])
+    # Person B calculations
+    jd_b = get_julian_day(person_b_data['date'], person_b_data['time'], float(person_b_data['tz_offset']))
+    lat_b = float(person_b_data['lat'])
+    lon_b = float(person_b_data['lon'])
     pos_b = calculate_planetary_positions(jd_b)
     asc_b, mc_b, asc_sign_idx_b = calculate_ascendant_and_houses(jd_b, lat_b, lon_b)
     houses_b = assign_planets_to_houses(pos_b, asc_sign_idx_b)
@@ -209,6 +229,17 @@ def calculate_composite_chart(data):
         jd_a, jd_b, lat_a, lon_a, lat_b, lon_b
     )
     houses_composite = assign_planets_to_houses(positions, asc_sign_idx_composite)
+
+    # Add nakshatra and pada to composite planets
+    for planet in positions:
+        lon = positions[planet]['longitude']
+        nakshatra, pada = get_nakshatra_pada(lon)
+        positions[planet]['nakshatra'] = nakshatra
+        positions[planet]['pada'] = pada
+
+    # Calculate nakshatra and pada for composite ascendant and midheaven
+    asc_nakshatra, asc_pada = get_nakshatra_pada(asc_composite)
+    mc_nakshatra, mc_pada = get_nakshatra_pada(mc_composite)
 
     # Calculate aspects including Ascendant and Midheaven
     positions_with_angles = {
@@ -234,25 +265,34 @@ def calculate_composite_chart(data):
         'houses': {i+1: SIGNS[(asc_sign_idx_b + i) % 12] for i in range(12)}
     }
 
-    # Prepare composite data
+    # Prepare composite data with nakshatras and padas
     composite = {
         'planets': {planet: {**positions[planet], 'house': houses_composite[planet]} for planet in positions},
-        'ascendant': {'longitude': asc_composite, 'sign': SIGNS[asc_sign_idx_composite], 'degree': format_degrees(asc_composite % 30)},
-        'midheaven': {'longitude': mc_composite, 'sign': SIGNS[int(mc_composite // 30)], 'degree': format_degrees(mc_composite % 30)},
+        'ascendant': {
+            'longitude': asc_composite,
+            'sign': SIGNS[asc_sign_idx_composite],
+            'degree': format_degrees(asc_composite % 30),
+            'nakshatra': asc_nakshatra,
+            'pada': asc_pada
+        },
+        'midheaven': {
+            'longitude': mc_composite,
+            'sign': SIGNS[int(mc_composite // 30)],
+            'degree': format_degrees(mc_composite % 30),
+            'nakshatra': mc_nakshatra,
+            'pada': mc_pada
+        },
         'aspects': aspects,
         'houses': {i+1: SIGNS[(asc_sign_idx_composite + i) % 12] for i in range(12)}
     }
 
-    # Construct response
-    response = {
-        'person_a': {
-            'name': name_a,
-            'natal': natal_a
-        },
-        'person_b': {
-            'name': name_b,
-            'natal': natal_b
-        },
+    return {
+        'natal_a': natal_a,
+        'natal_b': natal_b,
         'composite': composite
     }
-    return response
+
+
+
+
+

@@ -4,7 +4,10 @@ from datetime import datetime
 import logging
 from venv import logger
 
+from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
 from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart
+from astro_engine.engine.lagnaCharts.RamanBavaLagna import raman_bava_lagna
+from astro_engine.engine.lagnaCharts.RamanKpLagna import raman_kp_lagna
 from astro_engine.engine.lagnaCharts.SunRaman import raman_sun
 from astro_engine.engine.natalCharts.RamanChakara import raman_sudarshan_chakra
 from astro_engine.engine.natalCharts.RamanNatal import raman_natal
@@ -438,4 +441,157 @@ def calculate_d60():
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
+
+
+
+
+#**************************************************************************************************************
+#***********************************    Lagna Charts        ***********************************************
+#**************************************************************************************************************
+
+#  Bava Lagna 
+
+@rl.route('/raman/calculate_bhava_lagna', methods=['POST'])
+def calculate_bhava_lagna():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
+        response = raman_bava_lagna(
+            data['birth_date'],
+            data['birth_time'],
+            float(data['latitude']),
+            float(data['longitude']),
+            float(data['timezone_offset']),
+            data['user_name']
+        )
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+
+
+
+#  KP Bava Lagna 
+
+@rl.route('/raman/calculate_kp_bhava', methods=['POST'])
+def calculate_kp_bhava_endpoint():
+    """Calculate KP Bhava Chart from birth details."""
+    data = request.get_json()
+    try:
+        # Extract and validate input
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        calculation_result = raman_kp_lagna(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct response with user_name
+        response = {
+            'user_name': user_name,
+            **calculation_result
+        }
+        return jsonify(response), 200
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing input field: {str(e)}"}), 400
+    except ValueError as e:
+        return jsonify({"error": f"Invalid input value: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+    
+
+
+
+
+
+
+# #  Binnastakavargha 
+# @rl.route('/raman/calculate_binnashtakvarga', methods=['POST'])
+# def calculate_ashtakvarga():
+#     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "No JSON data provided"}), 400
+
+#         required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+#         if not all(key in data for key in required):
+#             return jsonify({"error": "Missing required parameters"}), 400
+
+#         user_name = data['user_name']
+#         birth_date = data['birth_date']
+#         birth_time = data['birth_time']
+#         latitude = float(data['latitude'])
+#         longitude = float(data['longitude'])
+#         tz_offset = float(data['timezone_offset'])
+
+#         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+#             return jsonify({"error": "Invalid latitude or longitude"}), 400
+
+#         # Call the calculation function
+#         response = raman_binnastakavargha(user_name, birth_date, birth_time, latitude, longitude, tz_offset)
+#         return jsonify(response), 200
+
+#     except ValueError as ve:
+#         return jsonify({"error": str(ve)}), 400
+#     except Exception as e:
+#         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+
+
+
+
+# API Endpoint
+@rl.route('/calculate_ashtakvarga', methods=['POST'])
+def calculate_ashtakvarga():
+    """API endpoint to calculate Bhinnashtakavarga based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return jsonify({"error": "Invalid latitude or longitude"}), 400
+
+        # Call the calculation function
+        calculation_result = raman_binnastakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct the response
+        response = {
+            "user_name": user_name,
+            "birth_details": {
+                "birth_date": birth_date,
+                "birth_time": birth_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": tz_offset
+            },
+            **calculation_result
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 

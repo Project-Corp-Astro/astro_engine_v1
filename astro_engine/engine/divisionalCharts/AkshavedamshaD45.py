@@ -8,6 +8,15 @@ SIGNS = [
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
 
+# Nakshatra list (27 nakshatras)
+NAKSHATRAS = [
+    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
+    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
+    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta',
+    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+]
+
 # Sign natures for D45 calculation
 MOVABLE = [0, 3, 6, 9]  # Aries, Cancer, Libra, Capricorn
 FIXED = [1, 4, 7, 10]    # Taurus, Leo, Scorpio, Aquarius
@@ -53,11 +62,23 @@ def get_d45_house(planet_d45_sign_index, d45_asc_sign_index):
     """Calculate house number using Whole Sign system."""
     return (planet_d45_sign_index - d45_asc_sign_index) % 12 + 1
 
-def calculate_d45_chart(jd, latitude, longitude):
-    """Calculate the D45 chart based on Julian Day and birth location."""
+def get_nakshatra_and_pada(sidereal_lon):
+    """Calculate nakshatra and pada from sidereal longitude."""
+    nakshatra_size = 13.3333  # 360° / 27 nakshatras
+    pada_size = nakshatra_size / 4  # Each nakshatra has 4 padas
+    lon = sidereal_lon % 360
+    nakshatra_index = int(lon / nakshatra_size) % 27
+    position_in_nakshatra = lon % nakshatra_size
+    pada_index = int(position_in_nakshatra / pada_size) + 1
+    return {"nakshatra": NAKSHATRAS[nakshatra_index], "pada": pada_index}
+
+def lahairi_Akshavedamsha(birth_date, birth_time, latitude, longitude, tz_offset, user_name='Unknown'):
+    """Calculate the Lahiri Akshavedamsha (D45) chart with retrograde, nakshatras, and padas."""
+    # Calculate Julian Day and set ayanamsa
+    jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
     swe.set_sid_mode(swe.SIDM_LAHIRI)  # Lahiri ayanamsa
 
-    # Planets to calculate (including Rahu; Ketu will be calculated)
+    # Planets to calculate
     planets = [
         (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
         (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
@@ -65,10 +86,10 @@ def calculate_d45_chart(jd, latitude, longitude):
     ]
     flag = swe.FLG_SIDEREAL | swe.FLG_SPEED
 
-    # Calculate D1 positions
+    # Calculate D1 (natal) positions
     d1_positions = {}
     for planet_id, name in planets:
-        pos, _ = swe.calc_ut(jd, planet_id, flag)
+        pos, _ = swe.calc_ut(jd_ut, planet_id, flag)
         lon = pos[0] % 360
         retro = 'R' if pos[3] < 0 else ''
         d1_positions[name] = (lon, retro)
@@ -78,37 +99,52 @@ def calculate_d45_chart(jd, latitude, longitude):
     ketu_lon = (rahu_lon + 180) % 360
     d1_positions['Ketu'] = (ketu_lon, '')
 
-    # Calculate ascendant
-    cusps, ascmc = swe.houses_ex(jd, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
+    # Calculate ascendant longitude (D1)
+    cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
     d1_asc_lon = ascmc[0] % 360
 
     # Calculate D45 ascendant
     d45_asc = get_d45_position(d1_asc_lon)
     d45_asc_sign_index = d45_asc['sign_index']
+    asc_nakshatra_pada = get_nakshatra_and_pada(d1_asc_lon)
 
-    # Calculate D45 positions for planets
+    # Calculate D45 positions for all planets
     d45_positions = {}
     for planet, (d1_lon, retro) in d1_positions.items():
         d45_pos = get_d45_position(d1_lon)
         house = get_d45_house(d45_pos['sign_index'], d45_asc_sign_index)
+        planet_nakshatra_pada = get_nakshatra_and_pada(d1_lon)
         d45_positions[planet] = {
             "sign": d45_pos['sign'],
             "house": house,
             "retrograde": retro,
-            "longitude": format_dms(d1_lon)
+            "longitude": format_dms(d1_lon),
+            "nakshatra": planet_nakshatra_pada["nakshatra"],
+            "pada": planet_nakshatra_pada["pada"]
         }
 
-    # Assign house signs
+    # Assign house signs based on D45 ascendant (Whole Sign system)
     house_signs = [
         {"house": i + 1, "sign": SIGNS[(d45_asc_sign_index + i) % 12]}
         for i in range(12)
     ]
 
-    return {
+    # Prepare response
+    response = {
+        "user_name": user_name,
         "d45_ascendant": {
             "sign": d45_asc['sign'],
-            "longitude": format_dms(d1_asc_lon)
+            "longitude": format_dms(d1_asc_lon),
+            "nakshatra": asc_nakshatra_pada["nakshatra"],
+            "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d45_positions,
-        "house_signs": house_signs
+        "house_signs": house_signs,
+        "metadata": {
+            "ayanamsa": "Lahiri",
+            "chart_type": "Akshavedamsa (D45)",
+            "house_system": "Whole Sign",
+            "calculation_time": datetime.utcnow().isoformat()
+        }
     }
+    return response

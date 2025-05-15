@@ -1,150 +1,148 @@
-# calculations.py
 import swisseph as swe
 from datetime import datetime, timedelta
+import math
 
-# Sidereal zodiac signs (0 = Aries, ..., 11 = Pisces)
-SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
-         'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
-
-# Nakshatras (27 divisions, 13°20' each)
-NAKSHATRAS = [
-    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 
-    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 
-    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 
-    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 
-    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+# Constants
+ZODIAC_SIGNS = [
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
 ]
 
-def get_julian_day(date_str, time_str, timezone_offset):
+NAKSHATRAS = [
+    ('Ashwini', 0, 13.3333), ('Bharani', 13.3333, 26.6667), ('Krittika', 26.6667, 40),
+    ('Rohini', 40, 53.3333), ('Mrigashira', 53.3333, 66.6667), ('Ardra', 66.6667, 80),
+    ('Punarvasu', 80, 93.3333), ('Pushya', 93.3333, 106.6667), ('Ashlesha', 106.6667, 120),
+    ('Magha', 120, 133.3333), ('Purva Phalguni', 133.3333, 146.6667), ('Uttara Phalguni', 146.6667, 160),
+    ('Hasta', 160, 173.3333), ('Chitra', 173.3333, 186.6667), ('Swati', 186.6667, 200),
+    ('Vishakha', 200, 213.3333), ('Anuradha', 213.3333, 226.6667), ('Jyeshtha', 226.6667, 240),
+    ('Mula', 240, 253.3333), ('Purva Ashadha', 253.3333, 266.6667), ('Uttara Ashadha', 266.6667, 280),
+    ('Shravana', 280, 293.3333), ('Dhanishta', 293.3333, 306.6667), ('Shatabhisha', 306.6667, 320),
+    ('Purva Bhadrapada', 320, 333.3333), ('Uttara Bhadrapada', 333.3333, 346.6667), ('Revati', 346.6667, 360)
+]
+
+ODD_SIGNS = ["Aries", "Gemini", "Leo", "Libra", "Sagittarius", "Aquarius"]
+EVEN_SIGNS = ["Taurus", "Cancer", "Virgo", "Scorpio", "Capricorn", "Pisces"]
+
+PLANETS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+SWE_PLANETS = [swe.SUN, swe.MOON, swe.MARS, swe.MERCURY, swe.JUPITER, swe.VENUS, swe.SATURN, swe.MEAN_NODE, swe.MEAN_NODE]
+
+# Helper Functions
+def get_julian_day(date_str, time_str, tz_offset):
     """Convert birth date and time to Julian Day (UT)."""
     try:
         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
         time_obj = datetime.strptime(time_str, '%H:%M:%S')
         local_dt = datetime.combine(date_obj, time_obj.time())
-        ut_dt = local_dt - timedelta(hours=timezone_offset)
+        ut_dt = local_dt - timedelta(hours=tz_offset)
         hour_decimal = ut_dt.hour + (ut_dt.minute / 60.0) + (ut_dt.second / 3600.0)
         return swe.julday(ut_dt.year, ut_dt.month, ut_dt.day, hour_decimal)
     except ValueError as e:
-        raise ValueError(f"Invalid date/time format: {e}")
+        raise ValueError(f"Invalid date or time format: {str(e)}")
 
-def format_dms(degrees):
-    """Format degrees into degrees, minutes, seconds."""
-    d = int(degrees)
-    m = int((degrees - d) * 60)
-    s = (degrees - d - m / 60.0) * 3600
-    return f"{d}° {m}' {s:.2f}\""
-
-def get_nakshatra(longitude):
-    """Calculate nakshatra from sidereal longitude."""
-    nakshatra_index = int((longitude % 360) / 13.3333) % 27
-    return NAKSHATRAS[nakshatra_index]
-
-def get_d2_position(d1_longitude):
-    """Calculate D2 sign and degrees using Parashara's method."""
-    # Extract D1 sign index and degrees within the sign
-    d1_sign_index = int(d1_longitude // 30) % 12
-    d1_sign_deg = d1_longitude % 30
-    # Determine if the sign is odd (0, 2, 4, ...) or even (1, 3, 5, ...)
-    is_odd = d1_sign_index % 2 == 0
-    # Apply Parashara D2 mapping
-    if is_odd:
-        if d1_sign_deg < 15:
-            d2_sign, d2_sign_index = "Leo", 4  # First half of odd sign
-        else:
-            d2_sign, d2_sign_index = "Cancer", 3  # Second half of odd sign
-    else:
-        if d1_sign_deg < 15:
-            d2_sign, d2_sign_index = "Cancer", 3  # First half of even sign
-        else:
-            d2_sign, d2_sign_index = "Leo", 4  # Second half of even sign
-    d2_deg = d1_sign_deg  # Degrees remain unchanged in D2
-    d2_sidereal_lon = (d2_sign_index * 30) + d2_deg
-    return {
-        "sign": d2_sign,
-        "degrees": format_dms(d2_deg),
-        "nakshatra": get_nakshatra(d2_sidereal_lon),
-        "sign_index": d2_sign_index
-    }
-
-def get_d2_house(d2_sign_index, d2_asc_sign_index):
-    """Assign house number using Whole Sign system."""
-    return (d2_sign_index - d2_asc_sign_index) % 12 + 1
-
-def calculate_d2_chart(data):
-    """
-    Calculate the Hora (D2) chart based on birth data.
-    
-    Parameters:
-    - data: Dictionary containing birth_date, birth_time, latitude, longitude, timezone_offset.
-    
-    Returns:
-    - Dictionary containing the D2 chart data or raises an exception on error.
-    """
-    # Calculate Julian Day
-    jd_ut = get_julian_day(data['birth_date'], data['birth_time'], float(data['timezone_offset']))
-
-    # Set Lahiri Ayanamsa
+def calculate_planet_data(jd, planet_code):
+    """Calculate sidereal longitude and retrograde status of a planet."""
     swe.set_sid_mode(swe.SIDM_LAHIRI)
+    pos, ret = swe.calc_ut(jd, planet_code, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+    if ret < 0:
+        raise ValueError(f"Error calculating position for planet code {planet_code}")
+    longitude = pos[0] % 360
+    speed = pos[3]  # Speed in longitude
+    is_retrograde = speed < 0
+    return longitude, is_retrograde
 
-    # Calculate D1 sidereal positions for planets
-    planets = [
-        (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
-        (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
-        (swe.SATURN, 'Saturn'), (swe.TRUE_NODE, 'Rahu')
-    ]
-    flag = swe.FLG_SIDEREAL | swe.FLG_SPEED
-    d1_positions = {}
-    for planet_id, name in planets:
-        pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
-        if ret < 0:
-            raise ValueError(f"Error calculating {name}")
-        lon = pos[0] % 360
-        speed = pos[3]
-        retrograde = 'R' if speed < 0 else ''
-        d1_positions[name] = (lon, retrograde)
+def get_sign(longitude):
+    """Determine zodiac sign from sidereal longitude."""
+    sign_index = int(longitude // 30) % 12
+    return ZODIAC_SIGNS[sign_index]
 
-    # Calculate Ketu (opposite Rahu)
-    rahu_lon = d1_positions['Rahu'][0]
-    ketu_lon = (rahu_lon + 180) % 360
-    d1_positions['Ketu'] = (ketu_lon, '')
+def get_nakshatra_and_pada(longitude):
+    """Calculate nakshatra and pada based on longitude."""
+    longitude = longitude % 360
+    for nakshatra, start, end in NAKSHATRAS:
+        if start <= longitude < end:
+            position_in_nakshatra = longitude - start
+            pada = math.ceil(position_in_nakshatra / 3.3333)
+            return nakshatra, pada
+    return 'Revati', 4  # Fallback for edge cases
 
-    # Calculate D1 sidereal ascendant
-    cusps, ascmc = swe.houses_ex(jd_ut, float(data['latitude']), float(data['longitude']), b'W', flags=swe.FLG_SIDEREAL)
-    d1_asc_sidereal = ascmc[0] % 360
+def map_to_d2_hora(sign, degree):
+    """Map planet's sign and degree to D2 Hora chart (Cancer or Leo)."""
+    if sign in ODD_SIGNS:
+        if 0 <= degree < 15:
+            return "Leo", degree
+        elif 15 <= degree < 30:
+            return "Cancer", degree
+    elif sign in EVEN_SIGNS:
+        if 0 <= degree < 15:
+            return "Cancer", degree
+        elif 15 <= degree < 30:
+            return "Leo", degree
+    raise ValueError(f"Invalid sign or degree: {sign}, {degree}")
 
-    # Calculate D2 ascendant using the unified function
-    d2_asc = get_d2_position(d1_asc_sidereal)
-    d2_asc_sign_index = SIGNS.index(d2_asc['sign'])
+def calculate_ascendant(jd, latitude, longitude):
+    """Calculate sidereal Ascendant longitude using Lahiri Ayanamsa."""
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    houses = swe.houses_ex(jd, latitude, longitude, flags=swe.FLG_SIDEREAL)
+    return houses[0][0]  # Ascendant longitude
 
-    # Calculate D2 positions for planets
-    d2_positions = {}
-    for planet, (d1_lon, retro) in d1_positions.items():
-        d2_pos = get_d2_position(d1_lon)
-        house = get_d2_house(d2_pos['sign_index'], d2_asc_sign_index)
-        d2_positions[planet] = {
-            "sign": d2_pos['sign'],
-            "degrees": d2_pos['degrees'],
-            "retrograde": retro,
-            "house": house,
-            "nakshatra": d2_pos['nakshatra']
-        }
+def lahairi_hora_chart(birth_date, birth_time, latitude, longitude, tz_offset):
+    """Calculate D2 Hora chart with retrograde, nakshatra, and pada."""
+    # Calculate Julian Day
+    jd = get_julian_day(birth_date, birth_time, tz_offset)
 
-    # Generate house-to-sign mappings (Whole Sign system)
-    house_signs = [{"house": i + 1, "sign": SIGNS[(d2_asc_sign_index + i) % 12]} for i in range(12)]
+    # Calculate planetary positions, retrograde status, nakshatra, and pada
+    planet_data = {}
+    for planet, code in zip(PLANETS, SWE_PLANETS):
+        if planet == 'Ketu':
+            rahu_lon, rahu_retro = calculate_planet_data(jd, swe.MEAN_NODE)
+            ketu_lon = (rahu_lon + 180) % 360
+            ketu_retro = rahu_retro  # Ketu retrogrades with Rahu
+            sign = get_sign(ketu_lon)
+            degree = ketu_lon % 30
+            d2_sign, d2_degree = map_to_d2_hora(sign, degree)
+            nakshatra, pada = get_nakshatra_and_pada(ketu_lon)
+            planet_data[planet] = {
+                'natal_sign': sign,
+                'natal_degree': degree,
+                'd2_sign': d2_sign,
+                'd2_degree': d2_degree,
+                'retrograde': ketu_retro,
+                'nakshatra': nakshatra,
+                'pada': pada
+            }
+        else:
+            lon, retro = calculate_planet_data(jd, code)
+            sign = get_sign(lon)
+            degree = lon % 30
+            d2_sign, d2_degree = map_to_d2_hora(sign, degree)
+            nakshatra, pada = get_nakshatra_and_pada(lon)
+            planet_data[planet] = {
+                'natal_sign': sign,
+                'natal_degree': degree,
+                'd2_sign': d2_sign,
+                'd2_degree': d2_degree,
+                'retrograde': retro,
+                'nakshatra': nakshatra,
+                'pada': pada
+            }
 
-    # Construct the response
+    # Calculate Ascendant (Lagna) for D2 chart
+    asc_lon = calculate_ascendant(jd, latitude, longitude)
+    asc_sign = get_sign(asc_lon)
+    asc_degree = asc_lon % 30
+    d2_asc_sign, d2_asc_degree = map_to_d2_hora(asc_sign, asc_degree)
+    asc_nakshatra, asc_pada = get_nakshatra_and_pada(asc_lon)
+
+    # Construct response
     response = {
-        "d2_ascendant": {
-            "sign": d2_asc['sign'],
-            "degrees": d2_asc['degrees'],
-            "nakshatra": d2_asc['nakshatra']
+        'ascendant': {
+            'natal_sign': asc_sign,
+            'natal_degree': asc_degree,
+            'd2_sign': d2_asc_sign,
+            'd2_degree': d2_asc_degree,
+            'nakshatra': asc_nakshatra,
+            'pada': asc_pada
         },
-        "planetary_positions": d2_positions,
-        "house_signs": house_signs,
-        "metadata": {
-            "ayanamsa": "Lahiri",
-            "chart_type": "Hora (D2)",
-            "house_system": "Whole Sign"
-        }
+        'planets': planet_data
     }
     return response

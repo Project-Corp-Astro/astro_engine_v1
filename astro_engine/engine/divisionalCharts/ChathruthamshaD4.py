@@ -1,6 +1,8 @@
-# calculations.py
 import swisseph as swe
 from datetime import datetime, timedelta
+
+# Set Swiss Ephemeris path (adjust if necessary)
+swe.set_ephe_path('astro_api/ephe')
 
 # Zodiac signs and nakshatras
 signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
@@ -41,10 +43,14 @@ def format_dms(deg):
     s = (m_fraction - m) * 60
     return f"{d}° {m}' {s:.2f}\""
 
-def get_nakshatra(longitude):
-    """Calculate nakshatra based on sidereal longitude."""
+def get_nakshatra_and_pada(longitude):
+    """Calculate nakshatra and pada based on sidereal longitude."""
     nakshatra_index = int((longitude % 360) / 13.3333) % 27
-    return nakshatras[nakshatra_index]
+    nakshatra = nakshatras[nakshatra_index]
+    # Calculate pada (each nakshatra has 4 padas, each 3.3333°)
+    position_in_nakshatra = longitude % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
+    return nakshatra, pada
 
 def get_d4_position(d1_lon):
     """
@@ -76,16 +82,8 @@ def get_d4_house(d4_lon, d4_asc_sign_index):
     house_index = (sign_index - d4_asc_sign_index) % 12
     return house_index + 1
 
-def calculate_d4_chart(data):
-    """
-    Calculate the Chaturthamsha (D4) chart based on birth data.
-    
-    Parameters:
-    - data: Dictionary containing birth_date, birth_time, latitude, longitude, timezone_offset.
-    
-    Returns:
-    - Dictionary containing the D4 chart data or raises an exception on error.
-    """
+def lahairi_Chaturthamsha(data):
+    """Calculate the Chaturthamsha (D4) chart with retrograde, nakshatras, and padas."""
     # Parse inputs
     latitude = float(data['latitude'])
     longitude = float(data['longitude'])
@@ -112,7 +110,7 @@ def calculate_d4_chart(data):
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
             error_msg = swe.get_err_msg().decode()
-            raise ValueError(f"Error calculating {planet_name}: {error_msg}")
+            raise Exception(f"Error calculating {planet_name}: {error_msg}")
         lon = pos[0] % 360
         speed = pos[3]
         retrograde = 'R' if speed < 0 else ''
@@ -148,7 +146,7 @@ def calculate_d4_chart(data):
         sign_index = (d4_asc_sign_index + i) % 12
         house_signs.append({"house": i + 1, "sign": signs[sign_index]})
 
-    # Format output with nakshatras
+    # Format output with nakshatras and padas
     planetary_positions_json = {}
     for planet, (d4_lon, retro) in d4_positions.items():
         sign_index = int(d4_lon // 30) % 12
@@ -156,19 +154,22 @@ def calculate_d4_chart(data):
         sign_deg = d4_lon % 30
         dms = format_dms(sign_deg)
         house = planet_houses[planet]
-        nakshatra = get_nakshatra(d4_lon)
+        nakshatra, pada = get_nakshatra_and_pada(d4_lon)
         planetary_positions_json[planet] = {
             "sign": sign,
             "degrees": dms,
             "retrograde": retro,
             "house": house,
-            "nakshatra": nakshatra
+            "nakshatra": nakshatra,
+            "pada": pada
         }
 
+    asc_nakshatra, asc_pada = get_nakshatra_and_pada(d4_asc_lon)
     ascendant_json = {
         "sign": signs[d4_asc_sign_index],
         "degrees": format_dms(d4_asc_lon % 30),
-        "nakshatra": get_nakshatra(d4_asc_lon)
+        "nakshatra": asc_nakshatra,
+        "pada": asc_pada
     }
 
     # Construct response

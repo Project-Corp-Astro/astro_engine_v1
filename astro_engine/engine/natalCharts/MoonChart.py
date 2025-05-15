@@ -1,10 +1,24 @@
 import swisseph as swe
 from datetime import datetime, timedelta
 
+# Set Swiss Ephemeris path
+swe.set_ephe_path('astro_api/ephe')
+
 # Zodiac signs list
 SIGNS = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+]
+
+# Nakshatra list with their start degrees
+NAKSHATRAS = [
+    ("Ashwini", 0), ("Bharani", 13.3333), ("Krittika", 26.6667), ("Rohini", 40),
+    ("Mrigashira", 53.3333), ("Ardra", 66.6667), ("Punarvasu", 80), ("Pushya", 93.3333),
+    ("Ashlesha", 106.6667), ("Magha", 120), ("Purva Phalguni", 133.3333), ("Uttara Phalguni", 146.6667),
+    ("Hasta", 160), ("Chitra", 173.3333), ("Swati", 186.6667), ("Vishakha", 200),
+    ("Anuradha", 213.3333), ("Jyeshtha", 226.6667), ("Mula", 240), ("Purva Ashadha", 253.3333),
+    ("Uttara Ashadha", 266.6667), ("Shravana", 280), ("Dhanishta", 293.3333), ("Shatabhisha", 306.6667),
+    ("Purva Bhadrapada", 320), ("Uttara Bhadrapada", 333.3333), ("Revati", 346.6667)
 ]
 
 def get_julian_day(date_str, time_str, tz_offset):
@@ -79,7 +93,6 @@ def calculate_whole_sign_cusps(moon_longitude):
         list: 12 house cusps in degrees
     """
     moon_sign_index = int(moon_longitude // 30)
-    # Whole Sign cusps: Start at the Moon's sign, each house spans 30°
     house_cusps = [(moon_sign_index * 30 + i * 30) % 360 for i in range(12)]
     return house_cusps
 
@@ -101,17 +114,17 @@ def assign_planets_to_houses(planetary_positions, moon_sign_index):
 
 def format_dms(degrees):
     """
-    Format degrees into degrees, minutes, and seconds with high precision.
+    Format degrees into degrees, minutes, and seconds.
     Args:
         degrees (float): Angle in decimal degrees
     Returns:
-        str: Formatted string (e.g., "21° 50' 0.00\"")
+        str: Formatted string (e.g., "21° 50' 0\"")
     """
     degrees = degrees % 360.0
     d = int(degrees)
     m = int((degrees - d) * 60)
-    s = ((degrees - d) * 60 - m) * 60
-    return f"{d}° {m}' {s:.2f}\""
+    s = int(((degrees - d) * 60 - m) * 60)
+    return f"{d}° {m}' {s}\""
 
 def validate_input(data):
     """
@@ -130,3 +143,107 @@ def validate_input(data):
         raise ValueError("Latitude must be between -90 and 90 degrees")
     if not (-180 <= longitude <= 180):
         raise ValueError("Longitude must be between -180 and 180 degrees")
+
+def get_nakshatra_and_pada(longitude):
+    """
+    Determine the nakshatra and pada based on longitude.
+    Args:
+        longitude (float): Sidereal longitude in degrees
+    Returns:
+        tuple: (nakshatra_name, pada_number)
+    """
+    longitude = longitude % 360
+    for i, (nakshatra, start) in enumerate(NAKSHATRAS):
+        end = NAKSHATRAS[(i + 1) % len(NAKSHATRAS)][1] if i < 26 else 360
+        if start <= longitude < end:
+            nakshatra_name = nakshatra
+            pada = int((longitude - start) / 3.3333) + 1
+            return nakshatra_name, pada
+    return "Revati", 4  # Fallback for edge case
+
+def lahairi_moon_chart(data):
+    """
+    Calculate Moon Chart (sidereal) with Whole Sign house system, including retrograde, nakshatras, and padas.
+    Args:
+        data (dict): Input JSON data
+    Returns:
+        dict: Moon Chart data with Chandra Lagna, house cusps, and planetary positions
+    """
+    # Extract input data
+    user_name = data.get('user_name', 'Unknown')
+    birth_date = data['birth_date']
+    birth_time = data['birth_time']
+    latitude = float(data['latitude'])
+    longitude = float(data['longitude'])
+    tz_offset = float(data['timezone_offset'])
+
+    # Calculate Julian Day
+    jd = get_julian_day(birth_date, birth_time, tz_offset)
+
+    # Calculate planetary positions with retrograde status
+    planetary_positions = calculate_planetary_positions(jd)
+
+    # Moon's position (Chandra Lagna)
+    moon_longitude, moon_retro = planetary_positions['Moon']
+    moon_sign_index = int(moon_longitude // 30)
+    moon_sign = SIGNS[moon_sign_index]
+    moon_degree = moon_longitude % 30
+    moon_nakshatra, moon_pada = get_nakshatra_and_pada(moon_longitude)
+
+    # Calculate house cusps for Moon Chart (Whole Sign)
+    house_cusps = calculate_whole_sign_cusps(moon_longitude)
+
+    # Assign planets to houses in Moon Chart
+    house_assignments = assign_planets_to_houses(planetary_positions, moon_sign_index)
+
+    # Prepare house cusps data
+    house_data = [
+        {
+            "house": i + 1,
+            "cusp": format_dms(house_cusps[i]),
+            "sign": SIGNS[(moon_sign_index + i) % 12]
+        }
+        for i in range(12)
+    ]
+
+    # Prepare planetary positions data with retrograde, nakshatra, and pada
+    planetary_data = [
+        {
+            "planet": planet,
+            "longitude": format_dms(longitude),
+            "sign": SIGNS[int(longitude // 30)],
+            "retrograde": retrograde,
+            "house": house_assignments[planet],
+            "nakshatra": get_nakshatra_and_pada(longitude)[0],
+            "pada": get_nakshatra_and_pada(longitude)[1]
+        }
+        for planet, (longitude, retrograde) in planetary_positions.items()
+    ]
+
+    # Construct response
+    response = {
+        "user_name": user_name,
+        "chandra_lagna": {
+            "longitude": format_dms(moon_longitude),
+            "sign": moon_sign,
+            "degree": format_dms(moon_degree),
+            "retrograde": moon_retro,
+            "nakshatra": moon_nakshatra,
+            "pada": moon_pada
+        },
+        "house_cusps": house_data,
+        "planetary_positions": planetary_data,
+        "metadata": {
+            "ayanamsa": "Lahiri",
+            "house_system": "Whole Sign",
+            "calculation_time": datetime.utcnow().isoformat(),
+            "input": {
+                "birth_date": birth_date,
+                "birth_time": birth_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": tz_offset
+            }
+        }
+    }
+    return response

@@ -1,6 +1,8 @@
-# calculations.py
 import swisseph as swe
 from datetime import datetime, timedelta
+
+# Set Swiss Ephemeris path (adjust if necessary)
+swe.set_ephe_path('astro_api/ephe')
 
 # Zodiac signs list (0 = Aries, 1 = Taurus, ..., 11 = Pisces)
 signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
@@ -39,12 +41,17 @@ def format_dms(deg):
     s = (m_fraction - m) * 60
     return f"{d}° {m}' {s:.2f}\""
 
-def get_nakshatra(longitude):
+def get_nakshatra_and_pada(longitude):
     """
-    Determine the nakshatra based on sidereal longitude.
+    Determine the nakshatra and pada based on sidereal longitude.
+    Each nakshatra spans 13°20' (13.3333°), and each pada is 3°20' (3.3333°).
     """
-    nakshatra_index = int((longitude % 360) / 13.3333) % 27
-    return nakshatras[nakshatra_index]
+    lon = longitude % 360
+    nakshatra_index = int(lon / 13.3333) % 27
+    position_in_nakshatra = lon % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
+    nakshatra = nakshatras[nakshatra_index]
+    return {"nakshatra": nakshatra, "pada": pada}
 
 def get_d12_position(d1_lon_sidereal):
     """
@@ -61,12 +68,13 @@ def get_d12_position(d1_lon_sidereal):
     segment_position = d1_sign_position % 2.5   # Position within the 2.5° segment
     d12_degree = (segment_position / 2.5) * 30  # Scale to 0–30° in D12 sign
     d12_lon = (d12_sign_index * 30) + d12_degree  # Full D12 longitude for house calculation
-    nakshatra = get_nakshatra(d1_lon_sidereal)  # Use D1 longitude for nakshatra
+    nakshatra_info = get_nakshatra_and_pada(d1_lon_sidereal)  # Use D1 longitude for nakshatra and pada
     
     return {
         "sign": signs[d12_sign_index],
         "degrees": format_dms(d12_degree),
-        "nakshatra": nakshatra,
+        "nakshatra": nakshatra_info["nakshatra"],
+        "pada": nakshatra_info["pada"],
         "longitude": d12_lon
     }
 
@@ -78,18 +86,22 @@ def get_d12_house(d12_lon, d12_asc_sign_index):
     house_index = (sign_index - d12_asc_sign_index + 12) % 12  # Ensure positive offset
     return house_index + 1
 
-def calculate_d12_chart(data):
+def lahairi_Dwadashamsha(birth_date, birth_time, latitude, longitude, timezone_offset):
     """
-    Calculate the Dwadasamsa (D12) chart based on birth data.
-    
-    Parameters:
-    - data: Dictionary containing birth_date, birth_time, latitude, longitude, timezone_offset.
-    
+    Calculate the complete Dwadasamsa (D12) chart.
+
+    Args:
+        birth_date (str): 'YYYY-MM-DD'
+        birth_time (str): 'HH:MM:SS'
+        latitude (float): Birth latitude
+        longitude (float): Birth longitude
+        timezone_offset (float): Offset from UTC in hours
+
     Returns:
-    - Dictionary containing the D12 chart data or raises an exception on error.
+        dict: D12 chart data including ascendant, planetary positions, and house signs
     """
     # Calculate Julian Day
-    jd_ut = get_julian_day(data['birth_date'], data['birth_time'], float(data['timezone_offset']))
+    jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
 
     # Set Lahiri Ayanamsa
     swe.set_sid_mode(swe.SIDM_LAHIRI)
@@ -105,7 +117,7 @@ def calculate_d12_chart(data):
     for planet_id, planet_name in planets:
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
-            raise ValueError(f"Error calculating {planet_name}")
+            raise Exception(f"Error calculating {planet_name}")
         lon = pos[0] % 360
         speed = pos[3]
         retrograde = 'R' if speed < 0 else ''
@@ -117,7 +129,7 @@ def calculate_d12_chart(data):
     d1_positions_sidereal['Ketu'] = (ketu_lon, '')
 
     # Calculate D1 sidereal ascendant
-    cusps, ascmc = swe.houses_ex(jd_ut, float(data['latitude']), float(data['longitude']), b'W', flags=swe.FLG_SIDEREAL)
+    cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
     d1_asc_lon_sidereal = ascmc[0] % 360
 
     # Calculate D12 ascendant
@@ -135,7 +147,8 @@ def calculate_d12_chart(data):
             "degrees": d12_pos['degrees'],
             "retrograde": retro,
             "house": house,
-            "nakshatra": d12_pos['nakshatra']
+            "nakshatra": d12_pos['nakshatra'],
+            "pada": d12_pos['pada']
         }
 
     # Calculate house signs based on D12 ascendant
@@ -144,7 +157,7 @@ def calculate_d12_chart(data):
         sign_index = (d12_asc_sign_index + i) % 12
         house_signs.append({"house": i + 1, "sign": signs[sign_index]})
 
-    # Construct response
+    # Construct the response dictionary
     response = {
         "d12_ascendant": d12_asc,
         "planetary_positions": d12_positions,

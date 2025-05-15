@@ -2,7 +2,10 @@ import swisseph as swe
 from datetime import datetime, timedelta
 import math
 
-# Zodiac signs (0-based index: Aries=0, Taurus=1, ..., Pisces=11)
+# Set Swiss Ephemeris path
+swe.set_ephe_path('astro_api/ephe')
+
+# Zodiac signs (0-based index: Aries = 0, Pisces = 11)
 SIGNS = [
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
@@ -18,6 +21,15 @@ SHASHTIAMSHA_DEITIES = [
     "Kulanashta", "Vamsakshaya", "Utpata", "Kala", "Saumya", "Komala", "Sheetala", "Karaladamshtra",
     "Chandramukhi", "Praveena", "Kalapavaka", "Dandayudha", "Nirmala", "Saumya", "Kroora", "Atisheetala",
     "Amrita", "Payodhi", "Brahmana", "Indu Rekha"
+]
+
+# Nakshatras (27 lunar mansions, each spanning 13°20')
+NAKSHATRAS = [
+    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
+    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
+    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta',
+    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
 ]
 
 def get_julian_day(date_str, time_str, tz_offset):
@@ -39,7 +51,7 @@ def get_julian_day(date_str, time_str, tz_offset):
     hour_decimal = ut_dt.hour + (ut_dt.minute / 60.0) + (ut_dt.second / 3600.0)
     return swe.julday(ut_dt.year, ut_dt.month, ut_dt.day, hour_decimal)
 
-def get_sidereal_longitude(jd_ut, planet_id, ascendant=False):
+def get_sidereal_longitude(jd_ut, planet_id, ascendant=False, lat=None, lon=None):
     """
     Calculate sidereal longitude for a planet or ascendant using Lahiri Ayanamsa.
     
@@ -47,6 +59,8 @@ def get_sidereal_longitude(jd_ut, planet_id, ascendant=False):
         jd_ut (float): Julian Day in UT.
         planet_id (int): Swiss Ephemeris planet ID (e.g., swe.SUN) or None for ascendant.
         ascendant (bool): True if calculating for ascendant, False for planets.
+        lat (float): Latitude (required for ascendant).
+        lon (float): Longitude (required for ascendant).
     
     Returns:
         tuple: (longitude, retrograde flag) where longitude is 0-360° and retrograde is 'R' or ''.
@@ -55,8 +69,10 @@ def get_sidereal_longitude(jd_ut, planet_id, ascendant=False):
     flag = swe.FLG_SIDEREAL | swe.FLG_SPEED
     
     if ascendant:
-        # Placeholder for ascendant longitude (will be calculated separately)
-        return None, ''
+        if lat is None or lon is None:
+            raise ValueError("Latitude and longitude required for ascendant calculation")
+        cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, b'W', flags=swe.FLG_SIDEREAL)
+        return ascmc[0] % 360, ''
     else:
         pos, _ = swe.calc_ut(jd_ut, planet_id, flag)
         longitude = pos[0] % 360
@@ -73,30 +89,22 @@ def get_d60_position(sidereal_lon):
     Returns:
         dict: D60 sign, sign index, Shashtiamsha number, and deity.
     """
-    # Step 1: Extract natal sign and degrees within it
-    natal_sign_index = int(sidereal_lon // 30)  # 0-11 (Aries to Pisces)
-    natal_degrees = sidereal_lon % 30  # Degrees within the sign (0° to 29.999°)
-
-    # Step 2: Calculate D60 sign
+    natal_sign_index = int(sidereal_lon // 30)
+    natal_degrees = sidereal_lon % 30
     y = natal_degrees * 2
     remainder = y % 12
-    count = math.floor(remainder) + 1  # Count starts from 1
-    d60_sign_index = (natal_sign_index + count - 1) % 12  # Adjust for 0-based index
-
-    # Step 3: Calculate Shashtiamsha number
-    shashtiamsha_number = math.floor(natal_degrees / 0.5) + 1  # Each segment is 0.5°
+    count = math.floor(remainder) + 1
+    d60_sign_index = (natal_sign_index + count - 1) % 12
+    shashtiamsha_number = math.floor(natal_degrees / 0.5) + 1
     if shashtiamsha_number > 60:
-        shashtiamsha_number = 60  # Cap at 60
-    
-    # Step 4: Map to deity
-    deity = SHASHTIAMSHA_DEITIES[shashtiamsha_number - 1]  # -1 for 0-based list index
-
+        shashtiamsha_number = 60
+    deity = SHASHTIAMSHA_DEITIES[shashtiamsha_number - 1]
     return {
         "sign": SIGNS[d60_sign_index],
         "sign_index": d60_sign_index,
         "shashtiamsha": shashtiamsha_number,
         "deity": deity,
-        "longitude": sidereal_lon  # Retain for house calculation
+        "longitude": sidereal_lon
     }
 
 def get_d60_house(d60_sign_index, d60_asc_sign_index):
@@ -127,19 +135,40 @@ def format_dms(degrees):
     s = (degrees - d - m / 60) * 3600
     return f"{d}°{m}'{s:.1f}\""
 
-def calculate_d60_chart(jd_ut, latitude, longitude):
+def get_nakshatra_and_pada(longitude):
     """
-    Calculate the D60 (Shashtiamsha) chart based on birth details.
+    Calculate nakshatra and pada from longitude.
     
     Args:
-        jd_ut (float): Julian Day in UT.
-        latitude (float): Latitude of birth place.
-        longitude (float): Longitude of birth place.
+        longitude (float): Sidereal longitude in degrees (0-360°).
     
     Returns:
-        dict: D60 chart data including ascendant, planetary positions, and house signs.
+        dict: Nakshatra name and pada number (1-4).
     """
-    # Calculate sidereal longitudes for planets
+    nakshatra_index = int(longitude / (360 / 27)) % 27
+    pada = int((longitude % (360 / 27)) / (360 / 108)) + 1
+    nakshatra = NAKSHATRAS[nakshatra_index]
+    return {"nakshatra": nakshatra, "pada": pada}
+
+def lahairi_Shashtiamsha(birth_date, birth_time, latitude, longitude, tz_offset, user_name='Unknown'):
+    """
+    Calculate the D60 (Shashtiamsha) chart including nakshatras and padas.
+    
+    Args:
+        birth_date (str): Birth date in 'YYYY-MM-DD' format.
+        birth_time (str): Birth time in 'HH:MM:SS' format.
+        latitude (float): Latitude of birth place.
+        longitude (float): Longitude of birth place.
+        tz_offset (float): Timezone offset in hours.
+        user_name (str): Name of the user (optional).
+    
+    Returns:
+        dict: D60 chart details including ascendant, planetary positions, house signs, and metadata.
+    """
+    # Step 1: Calculate Julian Day
+    jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
+
+    # Step 2: Calculate sidereal longitudes for planets
     planets = [
         (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
         (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
@@ -150,46 +179,62 @@ def calculate_d60_chart(jd_ut, latitude, longitude):
         lon, retro = get_sidereal_longitude(jd_ut, planet_id)
         d1_positions[name] = (lon, retro)
 
-    # Calculate Ketu
+    # Calculate Ketu (180° opposite Rahu)
     rahu_lon = d1_positions['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
-    d1_positions['Ketu'] = (ketu_lon, '')
+    d1_positions['Ketu'] = (ketu_lon, 'R')  # Ketu is always retrograde
 
-    # Calculate ascendant sidereal longitude
-    cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
-    d1_asc_lon = ascmc[0] % 360
+    # Step 3: Calculate ascendant sidereal longitude
+    d1_asc_lon, _ = get_sidereal_longitude(jd_ut, None, ascendant=True, lat=latitude, lon=longitude)
 
-    # Calculate D60 ascendant
+    # Step 4: Calculate D60 ascendant
     d60_asc = get_d60_position(d1_asc_lon)
     d60_asc_sign_index = d60_asc['sign_index']
 
-    # Calculate D60 positions for all planets
+    # Step 5: Calculate D60 positions for all planets with nakshatras and padas
     d60_positions = {}
     for planet, (d1_lon, retro) in d1_positions.items():
         d60_pos = get_d60_position(d1_lon)
         house = get_d60_house(d60_pos['sign_index'], d60_asc_sign_index)
+        nakshatra_pada = get_nakshatra_and_pada(d1_lon)
         d60_positions[planet] = {
             "sign": d60_pos['sign'],
             "shashtiamsha": d60_pos['shashtiamsha'],
             "deity": d60_pos['deity'],
             "house": house,
             "retrograde": retro,
-            "longitude": format_dms(d1_lon)  # Formatted for readability
+            "longitude": format_dms(d1_lon),
+            "nakshatra": nakshatra_pada["nakshatra"],
+            "pada": nakshatra_pada["pada"]
         }
 
-    # Assign house signs using Whole Sign system
+    # Step 6: Assign house signs using Whole Sign system
     house_signs = [
         {"house": i + 1, "sign": SIGNS[(d60_asc_sign_index + i) % 12]} 
         for i in range(12)
     ]
 
-    return {
+    # Step 7: Calculate ascendant nakshatra and pada
+    asc_nakshatra_pada = get_nakshatra_and_pada(d1_asc_lon)
+
+    # Step 8: Construct response
+    response = {
+        "user_name": user_name,
         "d60_ascendant": {
             "sign": d60_asc['sign'],
             "shashtiamsha": d60_asc['shashtiamsha'],
             "deity": d60_asc['deity'],
-            "longitude": format_dms(d1_asc_lon)
+            "longitude": format_dms(d1_asc_lon),
+            "nakshatra": asc_nakshatra_pada["nakshatra"],
+            "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d60_positions,
-        "house_signs": house_signs
+        "house_signs": house_signs,
+        "metadata": {
+            "ayanamsa": "Lahiri",
+            "chart_type": "Shashtiamsha (D60)",
+            "house_system": "Whole Sign",
+            "calculation_time": datetime.utcnow().isoformat()
+        }
     }
+    return response

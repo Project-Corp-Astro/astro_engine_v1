@@ -8,6 +8,15 @@ SIGNS = [
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
 
+# Nakshatras list
+NAKSHATRAS = [
+    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
+    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
+    'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha',
+    'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta',
+    'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'
+]
+
 def get_julian_day(date_str, time_str, tz_offset):
     """
     Convert birth date, time, and timezone offset to Julian Day (UT).
@@ -74,27 +83,44 @@ def get_d20_house(planet_d20_sign_index, d20_asc_sign_index):
     """
     return (planet_d20_sign_index - d20_asc_sign_index) % 12 + 1
 
-def calculate_d20_chart(birth_date, birth_time, latitude, longitude, tz_offset):
+def get_nakshatra_and_pada(sidereal_lon):
     """
-    Calculate the D20 (Vimsamsa) chart based on birth details.
+    Calculate nakshatra and pada from sidereal longitude.
     
     Args:
-        birth_date (str): Birth date in 'YYYY-MM-DD' format
-        birth_time (str): Birth time in 'HH:MM:SS' format
-        latitude (float): Latitude of birth place
-        longitude (float): Longitude of birth place
-        tz_offset (float): Timezone offset in hours
+        sidereal_lon (float): Sidereal longitude in degrees (0-360)
     
     Returns:
-        dict: D20 chart data including ascendant, planetary positions, and house signs
+        dict: Nakshatra name and pada number (1-4)
     """
-    # Calculate Julian Day
-    jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
+    nakshatra_index = int(sidereal_lon / 13.3333) % 27
+    position_in_nakshatra = sidereal_lon % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
+    nakshatra = NAKSHATRAS[nakshatra_index]
+    return {"nakshatra": nakshatra, "pada": pada}
 
-    # Set Lahiri Ayanamsa for sidereal calculations
+def lahairi_Vimshamsha(birth_date, birth_time, latitude, longitude, timezone_offset, user_name='Unknown'):
+    """
+    Calculate the D20 (Vimsamsa) chart with retrograde, nakshatras, and padas.
+    
+    Args:
+        birth_date (str): 'YYYY-MM-DD'
+        birth_time (str): 'HH:MM:SS'
+        latitude (float): Birth latitude
+        longitude (float): Birth longitude
+        timezone_offset (float): Timezone offset in hours
+        user_name (str): Optional user name
+    
+    Returns:
+        dict: D20 chart details
+    """
+    # Step 1: Calculate Julian Day
+    jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
+
+    # Step 2: Set Lahiri Ayanamsa for sidereal calculations
     swe.set_sid_mode(swe.SIDM_LAHIRI)
 
-    # Calculate sidereal longitudes for planets
+    # Step 3: Calculate sidereal longitudes for planets
     planets = [
         (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
         (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
@@ -114,38 +140,52 @@ def calculate_d20_chart(birth_date, birth_time, latitude, longitude, tz_offset):
     ketu_lon = (rahu_lon + 180) % 360
     d1_positions['Ketu'] = (ketu_lon, '')  # Ketu is not retrograde by convention
 
-    # Calculate ascendant sidereal longitude
+    # Step 4: Calculate ascendant sidereal longitude
     cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
     d1_asc_lon = ascmc[0] % 360  # Ascendant longitude
 
-    # Calculate D20 ascendant position
+    # Step 5: Calculate D20 ascendant position
     d20_asc = get_d20_position(d1_asc_lon)
     d20_asc_sign_index = d20_asc['sign_index']
+    asc_nakshatra_pada = get_nakshatra_and_pada(d1_asc_lon)
 
-    # Calculate D20 positions for all planets
+    # Step 6: Calculate D20 positions for all planets
     d20_positions = {}
     for planet, (d1_lon, retro) in d1_positions.items():
         d20_pos = get_d20_position(d1_lon)
         house = get_d20_house(d20_pos['sign_index'], d20_asc_sign_index)
+        planet_nakshatra_pada = get_nakshatra_and_pada(d1_lon)
         d20_positions[planet] = {
             "sign": d20_pos['sign'],
             "house": house,
             "retrograde": retro,
-            "longitude": format_dms(d1_lon)
+            "longitude": format_dms(d1_lon),
+            "nakshatra": planet_nakshatra_pada["nakshatra"],
+            "pada": planet_nakshatra_pada["pada"]
         }
 
-    # Assign house signs using Whole Sign system
+    # Step 7: Assign house signs using Whole Sign system
     house_signs = [
         {"house": i + 1, "sign": SIGNS[(d20_asc_sign_index + i) % 12]}
         for i in range(12)
     ]
 
-    # Return chart data
-    return {
+    # Step 8: Construct response dictionary
+    response = {
+        "user_name": user_name,
         "d20_ascendant": {
             "sign": d20_asc['sign'],
-            "longitude": format_dms(d1_asc_lon)
+            "longitude": format_dms(d1_asc_lon),
+            "nakshatra": asc_nakshatra_pada["nakshatra"],
+            "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d20_positions,
-        "house_signs": house_signs
+        "house_signs": house_signs,
+        "metadata": {
+            "ayanamsa": "Lahiri",
+            "chart_type": "Vimsamsa (D20)",
+            "house_system": "Whole Sign",
+            "calculation_time": datetime.utcnow().isoformat()
+        }
     }
+    return response

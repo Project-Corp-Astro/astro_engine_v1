@@ -1,12 +1,11 @@
-# calculations.py
 import swisseph as swe
 from datetime import datetime, timedelta
 
-# Zodiac signs (0 = Aries, 1 = Taurus, ..., 11 = Pisces)
+# Zodiac signs
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
 
-# Nakshatras (27 nakshatras)
+# Nakshatras
 NAKSHATRAS = [
     'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 
     'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 
@@ -43,7 +42,7 @@ def get_nakshatra(longitude):
     return NAKSHATRAS[nakshatra_index]
 
 def get_d16_position(sidereal_lon):
-    """Calculate D16 position from sidereal longitude."""
+    """Calculate D16 position from sidereal longitude, including pada."""
     natal_sign_index = int(sidereal_lon // 30)
     d1_sign_deg = sidereal_lon % 30
     d16_segment = int(d1_sign_deg / 1.875)  # Each D16 segment is 1.875 degrees
@@ -60,51 +59,37 @@ def get_d16_position(sidereal_lon):
     segment_start = d16_segment * 1.875
     segment_position = d1_sign_deg - segment_start
     d16_deg = (segment_position / 1.875) * 30  # Scale to 30 degrees per sign
+    nakshatra = get_nakshatra(sidereal_lon)
+
+    # Calculate pada (each nakshatra = 13.3333°, each pada = 3.3333°)
+    position_in_nakshatra = sidereal_lon % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
 
     return {
         "sign": SIGNS[d16_sign_index],
         "degrees": format_dms(d16_deg),
-        "nakshatra": get_nakshatra(sidereal_lon),
+        "nakshatra": nakshatra,
+        "pada": pada,
         "sign_index": d16_sign_index
     }
 
 def get_d16_house(d16_sign_index, d16_asc_sign_index, is_ketu=False, rahu_house=None, enforce_opposition=False):
     """Assign house number using Whole Sign system, with optional opposition for Ketu."""
     if is_ketu and rahu_house is not None and enforce_opposition:
-        # Place Ketu 6 houses (180 degrees) opposite Rahu
         house_number = (rahu_house + 5) % 12 + 1  # +5 for 6th house ahead (opposite)
     else:
-        # Standard Whole Sign house calculation
         house_number = (d16_sign_index - d16_asc_sign_index + 12) % 12 + 1
     return house_number
 
-def calculate_d16_chart(data):
-    """
-    Calculate the Shodasamsa (D16) chart based on birth data.
-    
-    Parameters:
-    - data: Dictionary containing birth_date, birth_time, latitude, longitude, timezone_offset, enforce_opposition.
-    
-    Returns:
-    - Dictionary containing the D16 chart data or raises an exception on error.
-    """
-    latitude = float(data['latitude'])
-    longitude = float(data['longitude'])
-    tz_offset = float(data['timezone_offset'])
-    enforce_opposition = data.get('enforce_opposition', False)  # Default to False
-
-    if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180) or not (-12 <= tz_offset <= 14):
-        raise ValueError("Invalid geographic or timezone data")
-
-    jd_ut = get_julian_day(data['birth_date'], data['birth_time'], tz_offset)
+def lahairi_Shodashamsha(birth_date, birth_time, latitude, longitude, timezone_offset, enforce_opposition=False):
+    """Calculate the complete Shodasamsa (D16) chart."""
+    jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
     d1_asc_sidereal = ascmc[0] % 360
     d1_asc_sign = SIGNS[int(d1_asc_sidereal // 30)]
-
     d16_asc = get_d16_position(d1_asc_sidereal)
     d16_asc_sign_index = d16_asc['sign_index']
-
     planets = [
         (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
         (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
@@ -115,15 +100,13 @@ def calculate_d16_chart(data):
     for planet_id, name in planets:
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
-            raise ValueError(f"Error calculating {name}")
+            raise Exception(f"Error calculating {name}")
         lon = pos[0] % 360
         retrograde = 'R' if pos[3] < 0 else ''
         d1_positions[name] = (lon, retrograde)
-
     rahu_lon = d1_positions['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
     d1_positions['Ketu'] = (ketu_lon, '')
-
     d16_positions = {}
     rahu_house = None
     for planet, (d1_lon, retro) in d1_positions.items():
@@ -135,7 +118,8 @@ def calculate_d16_chart(data):
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": rahu_house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
         elif planet == 'Ketu':
             house = get_d16_house(d16_pos['sign_index'], d16_asc_sign_index, 
@@ -145,7 +129,8 @@ def calculate_d16_chart(data):
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
         else:
             house = get_d16_house(d16_pos['sign_index'], d16_asc_sign_index, enforce_opposition=enforce_opposition)
@@ -154,17 +139,17 @@ def calculate_d16_chart(data):
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
-
     house_signs = [{"house": i + 1, "sign": SIGNS[(d16_asc_sign_index + i) % 12]} for i in range(12)]
-
     response = {
         "d1_ascendant": {"sign": d1_asc_sign, "degrees": format_dms(d1_asc_sidereal)},
         "d16_ascendant": {
             "sign": d16_asc['sign'],
             "degrees": d16_asc['degrees'],
-            "nakshatra": d16_asc['nakshatra']
+            "nakshatra": d16_asc['nakshatra'],
+            "pada": d16_asc['pada']
         },
         "planetary_positions": d16_positions,
         "house_signs": house_signs,
