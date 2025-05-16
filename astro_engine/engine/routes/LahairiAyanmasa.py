@@ -24,7 +24,7 @@ from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_s
 from astro_engine.engine.natalCharts.transit import  lahairi_tranist
 from astro_engine.engine.numerology.CompositeChart import  lahairi_composite
 from astro_engine.engine.numerology.LoShuGridNumerology import calculate_lo_shu_grid
-from astro_engine.engine.ashatakavargha.Binnastakavargha import ZODIAC_SIGNS, astro_binna_calculate_ascendant, astro_binna_get_julian_day, astro_binna_get_sign_index, astro_utils_calculate_bhinnashtakavarga, astro_utils_calculate_planet_positions, astro_utils_format_dms, astro_utils_validate_totals
+from astro_engine.engine.ashatakavargha.Binnastakavargha import  raman_bhinnashtakavarga
 from astro_engine.engine.numerology.NumerologyData import calculate_chaldean_numbers, calculate_date_numerology, get_sun_sign, get_element_from_number, get_sun_sign_element, get_elemental_compatibility, personal_interpretations, business_interpretations, ruling_planets, planet_insights, sun_sign_insights, number_colors, number_gemstones, planet_days
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
 from astro_engine.engine.dashas.Pratyantardashas import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
@@ -977,9 +977,6 @@ def synastry():
 
 
 
-
-
-
 # Composite Chart
 
 @bp.route('/lahairi/composite', methods=['POST'])
@@ -1067,7 +1064,7 @@ def progressed_chart():
 
 
 # Chaldean Numerology
-@bp.route('/chaldean_numerology', methods=['POST'])
+@bp.route('/lahairi/chaldean_numerology', methods=['POST'])
 def numerology():
     try:
         data = request.get_json()
@@ -1146,7 +1143,7 @@ def numerology():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 # Lo Shu Grid Numerology
-@bp.route('/lo_shu_grid_numerology', methods=['POST'])
+@bp.route('/lahairi/lo_shu_grid_numerology', methods=['POST'])
 def lo_shu():
     data = request.get_json()
     birth_date = data.get('birth_date')
@@ -1166,7 +1163,7 @@ def lo_shu():
     return jsonify(result)
 
 # Vimshottari Mahadasha and Antardashas
-@bp.route('/calculate_maha_antar_dasha', methods=['POST'])
+@bp.route('/lahairi/calculate_maha_antar_dasha', methods=['POST'])
 def calculate_vimshottari_dasha():
     try:
         data = request.get_json()
@@ -1207,7 +1204,7 @@ def calculate_vimshottari_dasha():
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 # Vimshottari Antardasha and Pratyantardashas
-@bp.route('/calculate_antar_prathythar_dasha', methods=['POST'])
+@bp.route('/lahairi/calculate_antar_prathythar_dasha', methods=['POST'])
 def calculate_vimshottari_Pratyantardashas():
     try:
         data = request.get_json()
@@ -1248,7 +1245,7 @@ def calculate_vimshottari_Pratyantardashas():
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 # Vimshottari Pratyantardasha and Sookshma Dasha
-@bp.route('/calculate_vimshottari_Sookshama', methods=['POST'])
+@bp.route('/lahairi/calculate_vimshottari_Sookshama', methods=['POST'])
 def calculate_vimshottari_Sookshama():
     try:
         data = request.get_json()
@@ -1288,53 +1285,104 @@ def calculate_vimshottari_Sookshama():
     except Exception as e:
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
+
+
 # Binnashtakavarga
-@bp.route('/calculate_binnashtakavarga', methods=['POST'])
-def ashtakavarga_api_calculate_ashtakavarga():
+# @bp.route('/lahairi/calculate_binnashtakavarga', methods=['POST'])
+# def ashtakavarga_api_calculate_ashtakavarga():
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "No JSON data provided"}), 400
+
+#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+#         if not all(field in data for field in required_fields):
+#             return jsonify({"error": "Missing required fields"}), 400
+
+#         user_name = data.get('user_name', 'Unknown')
+#         birth_date = data['birth_date']
+#         birth_time = data['birth_time']
+#         latitude = float(data['latitude'])
+#         longitude = float(data['longitude'])
+#         tz_offset = float(data['timezone_offset'])
+
+#         jd = astro_binna_get_julian_day(birth_date, birth_time, tz_offset)
+#         asc_lon = astro_binna_calculate_ascendant(jd, latitude, longitude)
+#         asc_sign_index = astro_binna_get_sign_index(asc_lon)
+#         asc_sign = ZODIAC_SIGNS[asc_sign_index]
+#         positions = astro_utils_calculate_planet_positions(jd)
+#         positions['Ascendant'] = {'longitude': asc_lon, 'sign_index': asc_sign_index}
+#         bhinnashtakavarga = astro_utils_calculate_bhinnashtakavarga(positions)
+#         astro_utils_validate_totals(bhinnashtakavarga)
+
+#         bhinnashtakavarga_output = {
+#             target: {"signs": {ZODIAC_SIGNS[i]: bindus[i] for i in range(12)}, "total_bindus": sum(bindus)}
+#             for target, bindus in bhinnashtakavarga.items()
+#         }
+#         asc_degrees = astro_utils_format_dms(asc_lon % 30)
+
+#         response = {
+#             'user_name': user_name,
+#             'ascendant': {'degrees': asc_degrees, 'sign': asc_sign},
+#             'bhinnashtakavarga': bhinnashtakavarga_output,
+#             'metadata': {'ayanamsa': 'Lahiri', 'calculation_time': datetime.utcnow().isoformat(), 'input': data}
+#         }
+#         return jsonify(response), 200
+
+#     except Exception as e:
+#         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+@bp.route('/calculate_ashtakvarga', methods=['POST'])
+def calculate_ashtakvarga():
+    """API endpoint to calculate Bhinnashtakavarga based on birth details."""
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
-        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
+        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
 
-        user_name = data.get('user_name', 'Unknown')
+        user_name = data['user_name']
         birth_date = data['birth_date']
         birth_time = data['birth_time']
         latitude = float(data['latitude'])
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        jd = astro_binna_get_julian_day(birth_date, birth_time, tz_offset)
-        asc_lon = astro_binna_calculate_ascendant(jd, latitude, longitude)
-        asc_sign_index = astro_binna_get_sign_index(asc_lon)
-        asc_sign = ZODIAC_SIGNS[asc_sign_index]
-        positions = astro_utils_calculate_planet_positions(jd)
-        positions['Ascendant'] = {'longitude': asc_lon, 'sign_index': asc_sign_index}
-        bhinnashtakavarga = astro_utils_calculate_bhinnashtakavarga(positions)
-        astro_utils_validate_totals(bhinnashtakavarga)
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return jsonify({"error": "Invalid latitude or longitude"}), 400
 
-        bhinnashtakavarga_output = {
-            target: {"signs": {ZODIAC_SIGNS[i]: bindus[i] for i in range(12)}, "total_bindus": sum(bindus)}
-            for target, bindus in bhinnashtakavarga.items()
-        }
-        asc_degrees = astro_utils_format_dms(asc_lon % 30)
+        # Call the calculation function
+        result = raman_bhinnashtakavarga(birth_date, birth_time, latitude, longitude, tz_offset)
 
+        # Construct response
         response = {
-            'user_name': user_name,
-            'ascendant': {'degrees': asc_degrees, 'sign': asc_sign},
-            'bhinnashtakavarga': bhinnashtakavarga_output,
-            'metadata': {'ayanamsa': 'Lahiri', 'calculation_time': datetime.utcnow().isoformat(), 'input': data}
+            "user_name": user_name,
+            "birth_details": {
+                "birth_date": birth_date,
+                "birth_time": birth_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": tz_offset
+            },
+            "planetary_positions": result["planetary_positions"],
+            "ascendant": result["ascendant"],
+            "bhinnashtakavarga_tables": result["bhinnashtakavarga_tables"],
+            "notes": {
+                "ayanamsa": "Raman",
+                "ayanamsa_value": f"{result['ayanamsa']:.6f}",
+                "chart_type": "Rasi",
+                "house_system": "Whole Sign"
+            }
         }
         return jsonify(response), 200
 
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
-
-
-
-
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
