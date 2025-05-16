@@ -35,7 +35,7 @@ from astro_engine.engine.divisionalCharts.ShashtiamshaD60 import  lahairi_Shasht
 from astro_engine.engine.divisionalCharts.VimshamshaD20 import  lahairi_Vimshamsha
 from astro_engine.engine.natalCharts.SudharashanaChakara import calculate_sidereal_positions, generate_chart, get_sign
 from astro_engine.engine.natalCharts.SunChart import  lahrir_sun_chart,  validate_input_sun
-from astro_engine.engine.natalCharts.MoonChart import  lahairi_moon_chart
+from astro_engine.engine.natalCharts.MoonChart import  lahairi_moon_chart, validate_input
 from astro_engine.engine.numerology.ProgressChart import  lahairi_progress
 from astro_engine.engine.numerology.SynatryChart import analyze_house_overlays, calculate_aspects,  evaluate_nodal_connections, interpret_synastry, lahairi_synastry, validate_person_data
 
@@ -43,9 +43,6 @@ from astro_engine.engine.numerology.SynatryChart import analyze_house_overlays, 
 bp = Blueprint('bp_routes', __name__)
 
 # Natal Chart
-
-
-
 @bp.route('/lahairi/natal', methods=['POST'])
 def natal_chart():
     try:
@@ -176,7 +173,7 @@ def calculate_sun_chart():
 
 # Moon Chart
 
-@bp.route('/calculate_moon_chart', methods=['POST'])
+@bp.route('/lahairi/calculate_moon_chart', methods=['POST'])
 def calculate_moon_chart():
     """
     API endpoint to calculate Moon Chart (sidereal) with Whole Sign house system.
@@ -245,7 +242,6 @@ def calculate_sudarshan_chakra():
 
 
 # Hora (D-2)
-
 
 @bp.route('/lahairi/calculate_d2_hora', methods=['POST'])
 def calculate_d2_hora():

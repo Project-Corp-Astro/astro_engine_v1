@@ -1,0 +1,26 @@
+
+
+Ramam Routes :
+
+http://localhost:5000/raman/natal
+http://localhost:5000/raman/calculate_moon_chart
+http://localhost:5000/raman/calculate_sun_chart
+http://localhost:5000/raman/calculate_sripathi_bhava
+
+http://localhost:5000/raman/calculate_d2_hora
+http://localhost:5000/raman/calculate_d3_chart
+http://localhost:5000/raman/calculate_d4
+http://localhost:5000/raman/calculate_d7_chart
+http://localhost:5000/raman/navamsha_d9
+http://localhost:5000/raman/calculate_d10
+http://localhost:5000/raman/calculate_d12
+http://localhost:5000/raman/calculate_d16
+http://localhost:5000/raman/calculate_d20
+http://localhost:5000/raman/calculate_d24
+http://localhost:5000/raman/calculate_d40
+http://localhost:5000/raman/calculate_d60
+
+http://localhost:5000/raman/calculate_arudha_lagna
+http://localhost:5000/raman/calculate_sripathi_bhava
+http://localhost:5000/raman/calculate_kp_bhava
+http://localhost:5000/raman/calculate_equal_bhava_lagna

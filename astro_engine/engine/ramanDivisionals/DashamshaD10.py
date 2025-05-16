@@ -1,11 +1,9 @@
 import swisseph as swe
 from datetime import datetime, timedelta
 
-# Zodiac signs list (0 = Aries, 1 = Taurus, ..., 11 = Pisces)
+# Constants
 signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
-
-# Nakshatra list (27 nakshatras)
 nakshatras = [
     'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 
     'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 
@@ -53,18 +51,20 @@ def format_dms(deg):
     s = (m_fraction - m) * 60
     return f"{d}° {m}' {s:.2f}\""
 
-def get_nakshatra(longitude):
+def get_nakshatra_pada(longitude):
     """
-    Determine the nakshatra based on sidereal longitude.
+    Determine the nakshatra and pada based on sidereal longitude.
 
     Args:
         longitude (float): Sidereal longitude (0–360°)
 
     Returns:
-        str: Nakshatra name
+        tuple: (nakshatra name, pada number)
     """
-    nakshatra_index = int((longitude % 360) / 13.3333) % 27
-    return nakshatras[nakshatra_index]
+    longitude = longitude % 360
+    nakshatra_index = int(longitude / 13.3333) % 27
+    pada = int((longitude % 13.3333) / 3.3333) + 1
+    return nakshatras[nakshatra_index], pada
 
 def get_d10_position(d1_lon_sidereal):
     """
@@ -126,22 +126,20 @@ def get_conjunct_planets(d10_asc_lon, d10_positions, orb=2.0):
             conjunct.append({"planet": planet, "retrograde": retro})
     return conjunct
 
-def raman_dashamsha(data):
+def raman_Dashamsha_D10(birth_date, birth_time, latitude, longitude, timezone_offset):
     """
-    Calculate the Dashamsha (D10) chart with nakshatras.
+    Calculate the Dashamsha (D10) chart accurately.
 
     Args:
-        data (dict): Input data containing birth_date, birth_time, latitude, longitude, timezone_offset
+        birth_date (str): 'YYYY-MM-DD'
+        birth_time (str): 'HH:MM:SS'
+        latitude (float): Birth latitude
+        longitude (float): Birth longitude
+        timezone_offset (float): Offset from UTC in hours
 
     Returns:
-        dict: D10 chart details including planetary positions, ascendant, and house signs
+        dict: Planetary positions, ascendant with conjunctions, house signs, and metadata
     """
-    birth_date = data['birth_date']
-    birth_time = data['birth_time']
-    latitude = float(data['latitude'])
-    longitude = float(data['longitude'])
-    timezone_offset = float(data['timezone_offset'])
-
     # Calculate Julian Day
     jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
 
@@ -159,7 +157,7 @@ def raman_dashamsha(data):
     for planet_id, planet_name in planets:
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
-            raise ValueError(f"Error calculating {planet_name}")
+            raise Exception(f"Error calculating {planet_name}: {swe.get_err_msg().decode()}")
         lon = pos[0] % 360
         speed = pos[3]
         retrograde = 'R' if speed < 0 else ''
@@ -168,7 +166,7 @@ def raman_dashamsha(data):
     # Calculate Ketu (180° opposite Rahu)
     rahu_lon = d1_positions_sidereal['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
-    d1_positions_sidereal['Ketu'] = (ketu_lon, '')
+    d1_positions_sidereal['Ketu'] = (ketu_lon, '')  # Original script does not set Ketu as retrograde
 
     # Calculate D1 sidereal ascendant
     cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
@@ -196,7 +194,7 @@ def raman_dashamsha(data):
         sign_index = (d10_asc_sign_index + i) % 12
         house_signs.append({"house": i + 1, "sign": signs[sign_index]})
 
-    # Format planetary positions
+    # Format planetary positions with nakshatra and pada
     planetary_positions_json = {}
     for planet, (d10_lon, retro) in d10_positions.items():
         sign_index = int(d10_lon // 30) % 12
@@ -204,20 +202,23 @@ def raman_dashamsha(data):
         sign_deg = d10_lon % 30
         dms = format_dms(sign_deg)
         house = planet_houses[planet]
-        nakshatra = get_nakshatra(d10_lon)
+        nakshatra, pada = get_nakshatra_pada(d10_lon)
         planetary_positions_json[planet] = {
             "sign": sign,
             "degrees": dms,
             "retrograde": retro,
             "house": house,
-            "nakshatra": nakshatra
+            "nakshatra": nakshatra,
+            "pada": pada
         }
 
-    # Format ascendant with conjunctions
+    # Format ascendant with conjunctions, nakshatra, and pada
+    asc_nakshatra, asc_pada = get_nakshatra_pada(d10_asc_lon)
     ascendant_json = {
         "sign": signs[d10_asc_sign_index],
         "degrees": format_dms(d10_asc_degree),
-        "nakshatra": get_nakshatra(d10_asc_lon),
+        "nakshatra": asc_nakshatra,
+        "pada": asc_pada,
         "conjunct": asc_conjunct
     }
 

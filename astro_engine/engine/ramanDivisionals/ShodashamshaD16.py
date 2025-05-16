@@ -1,6 +1,9 @@
 import swisseph as swe
 from datetime import datetime, timedelta
 
+# Set Swiss Ephemeris path (adjust this path as needed)
+swe.set_ephe_path('astro_api/ephe')
+
 # Zodiac signs (0 = Aries, 1 = Taurus, ..., 11 = Pisces)
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
@@ -36,10 +39,13 @@ def format_dms(degrees):
     s = (m_fraction - m) * 60
     return f"{d}° {m}' {s:.2f}\""
 
-def get_nakshatra(longitude):
-    """Calculate nakshatra from sidereal longitude."""
-    nakshatra_index = int((longitude % 360) / 13.3333) % 27
-    return NAKSHATRAS[nakshatra_index]
+def get_nakshatra_pada(longitude):
+    """Calculate nakshatra and pada from sidereal longitude."""
+    longitude = longitude % 360
+    nakshatra_index = int(longitude / 13.3333) % 27
+    position_in_nakshatra = longitude % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
+    return NAKSHATRAS[nakshatra_index], pada
 
 def get_d16_position(sidereal_lon):
     """Calculate D16 position from sidereal longitude."""
@@ -60,10 +66,12 @@ def get_d16_position(sidereal_lon):
     segment_position = d1_sign_deg - segment_start
     d16_deg = (segment_position / 1.875) * 30  # Scale to 30 degrees per sign
 
+    nakshatra, pada = get_nakshatra_pada(sidereal_lon)
     return {
         "sign": SIGNS[d16_sign_index],
         "degrees": format_dms(d16_deg),
-        "nakshatra": get_nakshatra(sidereal_lon),
+        "nakshatra": nakshatra,
+        "pada": pada,
         "sign_index": d16_sign_index
     }
 
@@ -77,7 +85,7 @@ def get_d16_house(d16_sign_index, d16_asc_sign_index, is_ketu=False, rahu_house=
         house_number = (d16_sign_index - d16_asc_sign_index + 12) % 12 + 1
     return house_number
 
-def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offset, enforce_opposition=False):
+def raman_Shodashamsha_D16(birth_date, birth_time, latitude, longitude, timezone_offset, enforce_opposition=False):
     """Calculate the Shodasamsa (D16) chart using Raman ayanamsa."""
     jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
     swe.set_sid_mode(swe.SIDM_RAMAN)
@@ -98,14 +106,14 @@ def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offse
     for planet_id, name in planets:
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
-            raise ValueError(f"Error calculating {name}")
+            raise Exception(f"Error calculating {name}")
         lon = pos[0] % 360
         retrograde = 'R' if pos[3] < 0 else ''
         d1_positions[name] = (lon, retrograde)
 
     rahu_lon = d1_positions['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
-    d1_positions['Ketu'] = (ketu_lon, '')
+    d1_positions['Ketu'] = (ketu_lon, 'R')  # Ketu is always retrograde
 
     d16_positions = {}
     rahu_house = None
@@ -118,7 +126,8 @@ def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offse
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": rahu_house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
         elif planet == 'Ketu':
             house = get_d16_house(d16_pos['sign_index'], d16_asc_sign_index, 
@@ -128,7 +137,8 @@ def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offse
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
         else:
             house = get_d16_house(d16_pos['sign_index'], d16_asc_sign_index, enforce_opposition=enforce_opposition)
@@ -137,7 +147,8 @@ def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offse
                 "degrees": d16_pos['degrees'],
                 "retrograde": retro,
                 "house": house,
-                "nakshatra": d16_pos['nakshatra']
+                "nakshatra": d16_pos['nakshatra'],
+                "pada": d16_pos['pada']
             }
 
     house_signs = [{"house": i + 1, "sign": SIGNS[(d16_asc_sign_index + i) % 12]} for i in range(12)]
@@ -147,12 +158,13 @@ def raman_shodasamsa(birth_date, birth_time, latitude, longitude, timezone_offse
         "d16_ascendant": {
             "sign": d16_asc['sign'],
             "degrees": d16_asc['degrees'],
-            "nakshatra": d16_asc['nakshatra']
+            "nakshatra": d16_asc['nakshatra'],
+            "pada": d16_asc['pada']
         },
         "planetary_positions": d16_positions,
         "house_signs": house_signs,
         "metadata": {
-            "ayanamsa": "Lahiri",
+            "ayanamsa": "Raman",
             "chart_type": "Shodasamsa (D16)",
             "house_system": "Whole Sign",
             "enforce_opposition": enforce_opposition

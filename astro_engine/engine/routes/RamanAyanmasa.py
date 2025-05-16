@@ -5,23 +5,30 @@ import logging
 from venv import logger
 
 from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
-from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart
+from astro_engine.engine.divisionalCharts.DreshkanaD3 import PLANET_NAMES, get_julian_day
+from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart, validate_input
+from astro_engine.engine.lagnaCharts.RamanArudha import raman_arudha_lagna
 from astro_engine.engine.lagnaCharts.RamanBavaLagna import raman_bava_lagna
-from astro_engine.engine.lagnaCharts.RamanKpLagna import raman_kp_lagna
-from astro_engine.engine.lagnaCharts.SunRaman import raman_sun
+from astro_engine.engine.lagnaCharts.RamanEqualBava import raman_equal_bava_lagnas
+from astro_engine.engine.lagnaCharts.RamanKpLagna import raman_kp_bava
+from astro_engine.engine.lagnaCharts.RamanSripathi import raman_sripathi_bava
+from astro_engine.engine.lagnaCharts.SunRaman import  raman_sun_chart, validate_input_sun
 from astro_engine.engine.natalCharts.RamanChakara import raman_sudarshan_chakra
-from astro_engine.engine.natalCharts.RamanNatal import raman_natal
-from astro_engine.engine.ramanDivisionals.AkshavedamshaD45 import raman_akshavedamsha
-from astro_engine.engine.ramanDivisionals.ChaturthamshaD4 import raman_chaturthamsha
-from astro_engine.engine.ramanDivisionals.ChaturvimshamshaD24 import raman_chaturvimshamsha
-from astro_engine.engine.ramanDivisionals.DashamshaD10 import raman_dashamsha
-from astro_engine.engine.ramanDivisionals.DreshkanaD3 import raman_dreshkana
-from astro_engine.engine.ramanDivisionals.DwadashamshaD12 import raman_dwadashamsha
-from astro_engine.engine.ramanDivisionals.KhavedamshaD40 import raman_khavedamsha
+from astro_engine.engine.natalCharts.RamanNatal import raman_natal, format_dms
+from astro_engine.engine.natalCharts.natal import longitude_to_sign
+from astro_engine.engine.ramanDivisionals.AkshavedamshaD45 import raman_Akshavedamsha_D45
+from astro_engine.engine.ramanDivisionals.ChaturthamshaD4 import raman_Chaturthamsha_D4
+from astro_engine.engine.ramanDivisionals.ChaturvimshamshaD24 import raman_Chaturvimshamsha_D24
+from astro_engine.engine.ramanDivisionals.DashamshaD10 import raman_Dashamsha_D10
+from astro_engine.engine.ramanDivisionals.DreshkanaD3 import raman_drekshakana
+from astro_engine.engine.ramanDivisionals.DwadashamshaD12 import raman_Dwadashamsha_D12
+from astro_engine.engine.ramanDivisionals.HoraD2 import raman_hora_chart
+from astro_engine.engine.ramanDivisionals.KhavedamshaD40 import raman_Khavedamsha_D40
+from astro_engine.engine.ramanDivisionals.NavamsaD9 import raman_navamsa_D9
 from astro_engine.engine.ramanDivisionals.SaptamshaD7 import raman_saptamsha
-from astro_engine.engine.ramanDivisionals.ShashtiamshaD60 import raman_shashtiamsha
-from astro_engine.engine.ramanDivisionals.ShodashamshaD16 import raman_shodasamsa
-from astro_engine.engine.ramanDivisionals.VimshamshaD20 import raman_vimsamsa
+from astro_engine.engine.ramanDivisionals.ShashtiamshaD60 import raman_Shashtiamsha_D60
+from astro_engine.engine.ramanDivisionals.ShodashamshaD16 import raman_Shodashamsha_D16
+from astro_engine.engine.ramanDivisionals.VimshamshaD20 import raman_Vimshamsha_D20
 
 
 
@@ -32,7 +39,7 @@ rl = Blueprint('rl_routes', __name__)
 
 #   Natal Chart 
 @rl.route('/raman/natal', methods=['POST'])
-def raman_natal_endpoint():
+def natal_chart():
     try:
         birth_data = request.get_json()
         if not birth_data:
@@ -47,8 +54,58 @@ def raman_natal_endpoint():
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
             return jsonify({"error": "Invalid latitude or longitude"}), 400
 
-        # Call the calculation function
-        response = raman_natal(birth_data)
+        # Calculate chart data
+        chart_data = raman_natal(birth_data)
+
+        # Format planetary positions
+        planetary_positions_json = {}
+        for planet, data in chart_data['planet_positions'].items():
+            sign, sign_deg = longitude_to_sign(data['lon'])
+            dms = format_dms(sign_deg)
+            house = chart_data['planet_houses'][planet]
+            planetary_positions_json[planet] = {
+                "sign": sign,
+                "degrees": dms,
+                "retrograde": data['retro'],
+                "house": house,
+                "nakshatra": data['nakshatra'],
+                "pada": data['pada']
+            }
+
+        # Format ascendant
+        asc_sign, asc_deg = longitude_to_sign(chart_data['ascendant']['lon'])
+        asc_dms = format_dms(asc_deg)
+        ascendant_json = {
+            "sign": asc_sign,
+            "degrees": asc_dms,
+            "nakshatra": chart_data['ascendant']['nakshatra'],
+            "pada": chart_data['ascendant']['pada']
+        }
+
+        # Format house signs
+        house_signs_json = {f"House {i+1}": {"sign": house["sign"], "start_longitude": format_dms(house["start_longitude"])}
+                           for i, house in enumerate(chart_data['house_signs'])}
+
+        # Construct response
+        response = {
+            "user_name": birth_data['user_name'],
+            "birth_details": {
+                "birth_date": birth_data['birth_date'],
+                "birth_time": birth_data['birth_time'],
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": float(birth_data['timezone_offset'])
+            },
+            "planetary_positions": planetary_positions_json,
+            "ascendant": ascendant_json,
+            "house_signs": house_signs_json,
+            "notes": {
+                "ayanamsa": "Lahiri",
+                "ayanamsa_value": f"{chart_data['ayanamsa_value']:.6f}",
+                "chart_type": "Rasi",
+                "house_system": "Whole Sign"
+            }
+        }
         return jsonify(response)
 
     except ValueError as ve:
@@ -59,15 +116,22 @@ def raman_natal_endpoint():
 
 
 
+
+
 #  Moon Chart 
 @rl.route('/raman/calculate_moon_chart', methods=['POST'])
 def calculate_moon_chart():
+    """
+    API endpoint to calculate Moon Chart (sidereal) with Whole Sign house system.
+    """
     try:
-        # Get JSON data from request
+        # Parse and validate input
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
-
+        
+        validate_input(data)
+        
         # Call the calculation function
         response = raman_moon_chart(data)
         return jsonify(response), 200
@@ -79,21 +143,23 @@ def calculate_moon_chart():
 
 
 
-# Sun Chart :
 
+# Sun Chart :
 @rl.route('/raman/calculate_sun_chart', methods=['POST'])
 def calculate_sun_chart():
     """
     API endpoint to calculate Sun Chart (sidereal) with Whole Sign house system.
     """
     try:
-        # Parse input
+        # Parse and validate input
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
         
+        validate_input_sun(data)
+        
         # Call the calculation function
-        response = raman_sun(data)
+        response = raman_sun_chart(data)
         return jsonify(response), 200
 
     except ValueError as ve:
@@ -103,8 +169,8 @@ def calculate_sun_chart():
 
 
 
-# Sudharasha Chakara 
 
+# Sudharasha Chakara 
 @rl.route('/raman/calculate_sudarshan_chakra', methods=['POST'])
 def calculate_sudarshan_chakra():
     """
@@ -153,15 +219,49 @@ def calculate_sudarshan_chakra():
 
 
 #  Hora D2 :
+@rl.route('/raman/calculate_d2_hora', methods=['POST'])
+def calculate_d2_hora():
+    """API endpoint to calculate the D2 Hora chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        result = raman_hora_chart(birth_date, birth_time, latitude, longitude, tz_offset)
+        response = {
+            'user_name': user_name,
+            'd2_hora_chart': result,
+            'metadata': {
+                'ayanamsa': 'Raman',
+                'house_system': 'Whole Sign',
+                'calculation_time': datetime.utcnow().isoformat(),
+                'input': data
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
 
 
 # Dreshkana D3
-
 @rl.route('/raman/calculate_d3_chart', methods=['POST'])
 def calculate_d3_chart_endpoint():
-    """API endpoint to calculate D3 chart with retrograde status and nakshatras."""
+    """API endpoint to calculate D3 chart with retrograde, nakshatra, and pada."""
     try:
         data = request.get_json()
         if not data:
@@ -171,38 +271,59 @@ def calculate_d3_chart_endpoint():
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Call the calculation function
-        response = raman_dreshkana(data)
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        jd = get_julian_day(birth_date, birth_time, tz_offset)
+        d3_data = raman_drekshakana(jd, latitude, longitude)
+
+        response = {
+            "ascendant": d3_data['Ascendant'],
+            "planets": {planet: d3_data[planet] for planet in PLANET_NAMES}
+        }
         return jsonify(response), 200
 
     except Exception as e:
+        logger.error(f"Error in D3 chart calculation: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+
 
 
 #  Chaturthamsha-D4
 @rl.route('/raman/calculate_d4', methods=['POST'])
-def calculate_d4_raman():
+def calculate_d4():
     """API endpoint to calculate the Chaturthamsha (D4) chart."""
     try:
-        # Get JSON data from request
+        # Get JSON data
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
-        # Check for required parameters
+        # Validate required fields
         required = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Call the calculation function
-        response = raman_chaturthamsha(data)
-        return jsonify(response)
+        # Parse inputs
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Calculate D4 chart
+        result = raman_Chaturthamsha_D4(birth_date, birth_time, latitude, longitude, timezone_offset)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
 
 
 
@@ -215,19 +336,68 @@ def calculate_d7_chart_endpoint():
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
+        # Required fields (user_name is optional)
         required = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required fields"}), 400
 
-        response = raman_saptamsha(data)
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day and D7 chart
+        jd = get_julian_day(birth_date, birth_time, tz_offset)
+        d7_data = raman_saptamsha(jd, latitude, longitude)
+
+        # Prepare response
+        response = {
+            "ascendant": d7_data['Ascendant'],
+            "planets": {planet: d7_data[planet] for planet in PLANET_NAMES}
+        }
         return jsonify(response), 200
 
     except Exception as e:
+        logger.error(f"Error in D7 calculation: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-# Dashamsha D10
+#  Navamsa D9
+@rl.route('/raman/navamsha_d9', methods=['POST'])
+def navamsa_chart():
+    try:
+        # Get JSON data from request
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
+        # Check for required parameters
+        required = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        # Parse input data
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        result = raman_navamsa_D9(birth_date, birth_time, latitude, longitude, timezone_offset)
+        return jsonify(result)
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+
+
+
+# Dashamsha D10
 @rl.route('/raman/calculate_d10', methods=['POST'])
 def calculate_d10():
     """
@@ -252,13 +422,21 @@ def calculate_d10():
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        response = raman_dashamsha(data)
-        return jsonify(response)
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Calculate D10 chart
+        result = raman_Dashamsha_D10(birth_date, birth_time, latitude, longitude, timezone_offset)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
 
 
 
@@ -268,19 +446,38 @@ def calculate_d10():
 def calculate_d12():
     """
     Flask API endpoint to calculate the complete Dwadasamsa (D12) chart.
+
+    Input (JSON):
+    - birth_date (str): 'YYYY-MM-DD'
+    - birth_time (str): 'HH:MM:SS'
+    - latitude (float): Birth latitude
+    - longitude (float): Birth longitude
+    - timezone_offset (float): Offset from UTC in hours
+
+    Output (JSON):
+    - D12 ascendant, planetary positions, house signs, and metadata
     """
     try:
+        # Parse JSON request
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
+        # Validate required fields
         required = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Call the calculation function
-        response = raman_dwadashamsha(data)
-        return jsonify(response)
+        # Extract inputs
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+
+        # Calculate D12 chart using the function from calculations.py
+        result = raman_Dwadashamsha_D12(birth_date, birth_time, latitude, longitude, timezone_offset)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
@@ -305,13 +502,13 @@ def calculate_d16():
         latitude = float(data['latitude'])
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
-        enforce_opposition = data.get('enforce_opposition', False)  # Default to False
+        enforce_opposition = data.get('enforce_opposition', False)
 
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180) or not (-12 <= tz_offset <= 14):
             return jsonify({"error": "Invalid geographic or timezone data"}), 400
 
-        response = raman_shodasamsa(birth_date, birth_time, latitude, longitude, tz_offset, enforce_opposition)
-        return jsonify(response)
+        result = raman_Shodashamsha_D16(birth_date, birth_time, latitude, longitude, tz_offset, enforce_opposition)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": str(ve)}), 400
@@ -319,11 +516,25 @@ def calculate_d16():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
+
 #  Vimshamsha D20
 @rl.route('/raman/calculate_d20', methods=['POST'])
 def calculate_d20():
     """
     API endpoint to calculate the D20 (Vimsamsa) chart.
+    
+    Expects JSON input:
+    {
+        "birth_date": "YYYY-MM-DD",
+        "birth_time": "HH:MM:SS",
+        "latitude": float,
+        "longitude": float,
+        "timezone_offset": float,
+        "user_name": str (optional)
+    }
+    
+    Returns:
+        JSON response with D20 chart details or error message
     """
     try:
         data = request.get_json()
@@ -334,14 +545,21 @@ def calculate_d20():
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
         # Call the calculation function
-        response = raman_vimsamsa(data)
-        return jsonify(response)
+        result = raman_Vimshamsha_D20(birth_date, birth_time, latitude, longitude, tz_offset)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 
 #  Chaturvimshamsha D24
@@ -353,17 +571,20 @@ def calculate_d24():
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
-
-        # Call the calculation function
-        response = raman_chaturvimshamsha(data)
-        return jsonify(response)
-
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+        result = raman_Chaturvimshamsha_D24(birth_date, birth_time, latitude, longitude, tz_offset)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 
 #  Khavedamsha D40
+
 @rl.route('/raman/calculate_d40', methods=['POST'])
 def calculate_d40():
     """API endpoint to calculate the D40 chart."""
@@ -372,9 +593,16 @@ def calculate_d40():
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
 
+        # Extract input data
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
         # Call the calculation function
-        response = raman_khavedamsha(data)
-        return jsonify(response)
+        result = raman_Khavedamsha_D40(birth_date, birth_time, latitude, longitude, tz_offset)
+        return jsonify(result)
 
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -384,7 +612,6 @@ def calculate_d40():
 
 @rl.route('/raman/calculate_d45', methods=['POST'])
 def calculate_d45():
-    """API endpoint to calculate D45 chart."""
     try:
         data = request.get_json()
         if not data:
@@ -394,9 +621,15 @@ def calculate_d45():
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        # Call the calculation function
-        response = raman_akshavedamsha(data)
-        return jsonify(response)
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+
+        result = raman_Akshavedamsha_D45(birth_date, birth_time, latitude, longitude, tz_offset, user_name)
+        return jsonify(result)
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
@@ -408,24 +641,9 @@ def calculate_d45():
 
 #  Shashtiamsha D60
 
+
 @rl.route('/raman/calculate_d60', methods=['POST'])
 def calculate_d60():
-    """
-    API endpoint to calculate the D60 (Shashtiamsha) chart.
-    
-    Expected Input (JSON):
-    {
-        "user_name": "Anusha kayakokula",
-        "birth_date": "1998-10-15",
-        "birth_time": "10:40:30",
-        "latitude": "17.3850",
-        "longitude": "78.4867",
-        "timezone_offset": 5.5
-    }
-    
-    Returns:
-        JSON: D60 chart details including ascendant, planetary positions, house signs, and metadata.
-    """
     try:
         data = request.get_json()
         if not data:
@@ -435,13 +653,23 @@ def calculate_d60():
         if not all(key in data for key in required):
             return jsonify({"error": "Missing required parameters"}), 400
 
-        response = raman_shashtiamsha(data)
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+
+        chart_data = raman_Shashtiamsha_D60(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        response = {
+            "user_name": user_name,
+            **chart_data
+        }
         return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-
-
 
 
 
@@ -475,14 +703,43 @@ def calculate_bhava_lagna():
 
 
 
+# Equal Bava lagna chart :
+@rl.route('/raman/calculate_equal_bhava_lagna', methods=['POST'])
+def calculate_equal_bhava_lagna():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        result = raman_equal_bava_lagnas(birth_date, birth_time, latitude, longitude, tz_offset, user_name)
+        return jsonify(result), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+
+
+
+
 #  KP Bava Lagna 
 
 @rl.route('/raman/calculate_kp_bhava', methods=['POST'])
-def calculate_kp_bhava_endpoint():
-    """Calculate KP Bhava Chart from birth details."""
+def calculate_kp_bhava():
+    """API endpoint to calculate KP Bhava Chart from birth details."""
     data = request.get_json()
     try:
-        # Extract and validate input
         user_name = data['user_name']
         birth_date = data['birth_date']
         birth_time = data['birth_time']
@@ -490,15 +747,8 @@ def calculate_kp_bhava_endpoint():
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        # Call the calculation function
-        calculation_result = raman_kp_lagna(birth_date, birth_time, latitude, longitude, tz_offset)
-
-        # Construct response with user_name
-        response = {
-            'user_name': user_name,
-            **calculation_result
-        }
-        return jsonify(response), 200
+        result = raman_kp_bava(user_name, birth_date, birth_time, latitude, longitude, tz_offset)
+        return jsonify(result), 200
 
     except KeyError as e:
         return jsonify({"error": f"Missing input field: {str(e)}"}), 400
@@ -506,10 +756,70 @@ def calculate_kp_bhava_endpoint():
         return jsonify({"error": f"Invalid input value: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
-    
 
 
 
+# Sripathi Bava 
+@rl.route('/raman/calculate_sripathi_bhava', methods=['POST'])
+def calculate_sripathi_bhava():
+    """Compute the Sripathi Bhava Chart and return JSON output."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        logger.debug(f"Input: Date={birth_date}, Time={birth_time}, Lat={latitude}, Lon={longitude}, TZ Offset={tz_offset}")
+
+        # Call the calculation function
+        response = raman_sripathi_bava(birth_date, birth_time, latitude, longitude, tz_offset)
+        logger.debug(f"Output JSON: {response}")
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        logger.error(f"Invalid input format: {str(ve)}")
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        logger.error(f"Calculation error: {str(e)}")
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
+# Arudha Lagna chart .
+@rl.route('/raman/calculate_arudha_lagna', methods=['POST'])
+def calculate_arudha_lagna():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        response = raman_arudha_lagna(birth_date, birth_time, latitude, longitude, tz_offset, user_name)
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
 

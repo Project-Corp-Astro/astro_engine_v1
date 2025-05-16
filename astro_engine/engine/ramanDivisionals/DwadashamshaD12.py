@@ -45,6 +45,15 @@ def get_nakshatra(longitude):
     nakshatra_index = int((longitude % 360) / 13.3333) % 27
     return nakshatras[nakshatra_index]
 
+def get_pada(longitude):
+    """
+    Calculate the pada (1-4) within the nakshatra based on sidereal longitude.
+    Each nakshatra spans 13.3333°, divided into 4 padas of 3.3333° each.
+    """
+    position_in_nakshatra = (longitude % 360) % 13.3333
+    pada = int(position_in_nakshatra / 3.3333) + 1
+    return pada
+
 def get_d12_position(d1_lon_sidereal):
     """
     Calculate the D12 sign, degree, and nakshatra from the D1 sidereal longitude.
@@ -61,11 +70,13 @@ def get_d12_position(d1_lon_sidereal):
     d12_degree = (segment_position / 2.5) * 30  # Scale to 0–30° in D12 sign
     d12_lon = (d12_sign_index * 30) + d12_degree  # Full D12 longitude for house calculation
     nakshatra = get_nakshatra(d1_lon_sidereal)  # Use D1 longitude for nakshatra
+    pada = get_pada(d1_lon_sidereal)            # Calculate pada
     
     return {
         "sign": signs[d12_sign_index],
         "degrees": format_dms(d12_degree),
         "nakshatra": nakshatra,
+        "pada": pada,
         "longitude": d12_lon
     }
 
@@ -77,26 +88,14 @@ def get_d12_house(d12_lon, d12_asc_sign_index):
     house_index = (sign_index - d12_asc_sign_index + 12) % 12  # Ensure positive offset
     return house_index + 1
 
-def raman_dwadashamsha(data):
+def raman_Dwadashamsha_D12(birth_date, birth_time, latitude, longitude, timezone_offset):
     """
-    Calculate the complete Dwadasamsa (D12) chart with nakshatras.
-    
-    Args:
-        data (dict): Input data containing birth_date, birth_time, latitude, longitude, timezone_offset
-    
-    Returns:
-        dict: D12 chart details including ascendant, planetary positions, and house signs
+    Calculate the complete Dwadasamsa (D12) chart using Raman ayanamsa.
     """
-    birth_date = data['birth_date']
-    birth_time = data['birth_time']
-    latitude = float(data['latitude'])
-    longitude = float(data['longitude'])
-    timezone_offset = float(data['timezone_offset'])
-
     # Calculate Julian Day
     jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
 
-    # Set Lahiri Ayanamsa
+    # Set Raman Ayanamsa
     swe.set_sid_mode(swe.SIDM_RAMAN)
 
     # Calculate D1 sidereal positions for planets
@@ -110,7 +109,7 @@ def raman_dwadashamsha(data):
     for planet_id, planet_name in planets:
         pos, ret = swe.calc_ut(jd_ut, planet_id, flag)
         if ret < 0:
-            raise ValueError(f"Error calculating {planet_name}")
+            raise Exception(f"Error calculating {planet_name}")
         lon = pos[0] % 360
         speed = pos[3]
         retrograde = 'R' if speed < 0 else ''
@@ -119,7 +118,7 @@ def raman_dwadashamsha(data):
     # Calculate Ketu (180° opposite Rahu)
     rahu_lon = d1_positions_sidereal['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
-    d1_positions_sidereal['Ketu'] = (ketu_lon, '')
+    d1_positions_sidereal['Ketu'] = (ketu_lon, 'R')  # Ketu is always retrograde
 
     # Calculate D1 sidereal ascendant
     cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
@@ -140,7 +139,8 @@ def raman_dwadashamsha(data):
             "degrees": d12_pos['degrees'],
             "retrograde": retro,
             "house": house,
-            "nakshatra": d12_pos['nakshatra']
+            "nakshatra": d12_pos['nakshatra'],
+            "pada": d12_pos['pada']
         }
 
     # Calculate house signs based on D12 ascendant
@@ -155,7 +155,7 @@ def raman_dwadashamsha(data):
         "planetary_positions": d12_positions,
         "house_signs": house_signs,
         "notes": {
-            "ayanamsa": "Lahiri",
+            "ayanamsa": "Raman",
             "chart_type": "Dwadasamsa (D12)",
             "house_system": "Whole Sign"
         }

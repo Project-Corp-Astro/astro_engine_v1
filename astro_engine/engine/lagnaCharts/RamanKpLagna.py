@@ -1,11 +1,12 @@
+import swisseph as swe
 from math import floor
 from datetime import datetime, timedelta
-import swisseph as swe
 
-# Define planets and factors (including Ketu)
+# Set Swiss Ephemeris path
+swe.set_ephe_path('astro_api/ephe')
+
+# Define constants
 PLANETS = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
-
-# Nakshatra list with start and end degrees
 NAKSHATRAS = [
     ('Ashwini', 0, 13.3333), ('Bharani', 13.3333, 26.6667), ('Krittika', 26.6667, 40),
     ('Rohini', 40, 53.3333), ('Mrigashira', 53.3333, 66.6667), ('Ardra', 66.6667, 80),
@@ -17,21 +18,15 @@ NAKSHATRAS = [
     ('Shravana', 280, 293.3333), ('Dhanishta', 293.3333, 306.6667), ('Shatabhisha', 306.6667, 320),
     ('Purva Bhadrapada', 320, 333.3333), ('Uttara Bhadrapada', 333.3333, 346.6667), ('Revati', 346.6667, 360)
 ]
-
-# Sub-lord proportions based on Vimshottari Dasha (in degrees for a 13°20' nakshatra)
 SUB_LORD_PROPORTIONS = [
     ('Ketu', 0.7778), ('Venus', 2.2222), ('Sun', 0.6667), ('Moon', 1.1111),
     ('Mars', 0.7778), ('Rahu', 2.0000), ('Jupiter', 1.7778), ('Saturn', 2.1111),
     ('Mercury', 1.8889)
 ]
-
-# Zodiac signs
 SIGNS = [
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
-
-# Helper Functions
 
 def get_julian_day(date_str, time_str, tz_offset):
     """Convert local birth date and time to Julian Day in UT."""
@@ -41,7 +36,7 @@ def get_julian_day(date_str, time_str, tz_offset):
     return swe.julday(ut_dt.year, ut_dt.month, ut_dt.day, hour_decimal, swe.GREG_CAL)
 
 def calculate_planet_positions(jd):
-    """Calculate sidereal positions of planets using Lahiri Ayanamsa, including Ketu and retrograde status."""
+    """Calculate sidereal positions of planets using Raman Ayanamsa, including Ketu and retrograde status."""
     swe.set_sid_mode(swe.SIDM_RAMAN)
     planet_ids = {
         'Sun': swe.SUN, 'Moon': swe.MOON, 'Mars': swe.MARS, 'Mercury': swe.MERCURY,
@@ -51,19 +46,16 @@ def calculate_planet_positions(jd):
     for planet, pid in planet_ids.items():
         result = swe.calc_ut(jd, pid, swe.FLG_SIDEREAL)
         positions[planet] = result[0][0] % 360
-        # Check for retrograde
         speed = result[0][3]  # Speed in longitude
         positions[planet + '_retro'] = speed < 0
     
-    # Calculate Ketu's position (180 degrees opposite to Rahu)
     positions['Ketu'] = (positions['Rahu'] + 180) % 360
-    # Ketu's retrograde status is the same as Rahu's since they are nodal points
     positions['Ketu_retro'] = positions['Rahu_retro']
     
     return positions
 
 def calculate_house_cusps(jd, latitude, longitude):
-    """Calculate sidereal house cusps using Placidus house system."""
+    """Calculate sidereal house cusps using Placidus house system with Raman Ayanamsa."""
     swe.set_sid_mode(swe.SIDM_RAMAN)
     house_pos = swe.houses_ex(jd, latitude, longitude, b'P', flags=swe.FLG_SIDEREAL)
     cusps = [cusp % 360 for cusp in house_pos[0]]
@@ -81,6 +73,16 @@ def get_nakshatra(longitude):
             return nakshatra
     return 'Revati' if longitude >= 346.6667 else 'Ashwini'
 
+def get_nakshatra_pada(longitude):
+    """Get nakshatra and pada based on longitude."""
+    longitude = longitude % 360
+    pada_size = 360 / 108  # 3.3333° per pada
+    pada_index = floor(longitude / pada_size)
+    nakshatra_index = pada_index // 4
+    pada_number = (pada_index % 4) + 1
+    nakshatra = NAKSHATRAS[nakshatra_index][0]
+    return nakshatra, pada_number
+
 def get_sub_lord(longitude):
     """Get sub-lord based on longitude within nakshatra."""
     nakshatra_span = 13.3333
@@ -91,7 +93,7 @@ def get_sub_lord(longitude):
         cumulative += proportion
         if progress <= cumulative:
             return sub_lord
-    return 'Mercury'  # Fallback to last sub-lord if calculation exceeds
+    return 'Mercury'
 
 def assign_planets_to_houses(planet_positions, house_cusps):
     """Assign planets to houses based on their positions and house cusp ranges."""
@@ -106,7 +108,7 @@ def assign_planets_to_houses(planet_positions, house_cusps):
                 if cusp_start <= pos < cusp_end:
                     house_assignments[planet] = i + 1
                     break
-            else:  # Cusp wraps around 360 degrees
+            else:
                 if pos >= cusp_start or pos < cusp_end:
                     house_assignments[planet] = i + 1
                     break
@@ -117,14 +119,12 @@ def calculate_significators(planet_positions, house_cusps):
     significators = {f"House {i+1}": [] for i in range(12)}
     house_assignments = assign_planets_to_houses(planet_positions, house_cusps)
     
-    # Sign lord mapping
     sign_lords = {
         'Aries': 'Mars', 'Taurus': 'Venus', 'Gemini': 'Mercury', 'Cancer': 'Moon',
         'Leo': 'Sun', 'Virgo': 'Mercury', 'Libra': 'Venus', 'Scorpio': 'Mars',
         'Sagittarius': 'Jupiter', 'Capricorn': 'Saturn', 'Aquarius': 'Saturn', 'Pisces': 'Jupiter'
     }
     
-    # Nakshatra lords
     nakshatra_lords = {
         'Ashwini': 'Ketu', 'Bharani': 'Venus', 'Krittika': 'Sun', 'Rohini': 'Moon',
         'Mrigashira': 'Mars', 'Ardra': 'Rahu', 'Punarvasu': 'Jupiter', 'Pushya': 'Saturn',
@@ -140,24 +140,20 @@ def calculate_significators(planet_positions, house_cusps):
         cusp_sign = get_sign(house_cusps[house - 1])
         house_lord = sign_lords[cusp_sign]
         
-        # Planets occupying the house
         for planet, house_num in house_assignments.items():
             if house_num == house:
                 if planet not in significators[house_key]:
                     significators[house_key].append(planet)
         
-        # Nakshatra lords of occupants
-        for planet in significators[house_key][:]:  # Copy to avoid modifying during iteration
+        for planet in significators[house_key][:]:
             nak = get_nakshatra(planet_positions[planet])
             nak_lord = nakshatra_lords[nak]
             if nak_lord not in significators[house_key]:
                 significators[house_key].append(nak_lord)
         
-        # House lord
         if house_lord not in significators[house_key]:
             significators[house_key].append(house_lord)
         
-        # Nakshatra lord of house lord
         nak = get_nakshatra(planet_positions[house_lord])
         nak_lord = nakshatra_lords[nak]
         if nak_lord not in significators[house_key]:
@@ -165,55 +161,53 @@ def calculate_significators(planet_positions, house_cusps):
     
     return significators
 
-def raman_kp_lagna(birth_date, birth_time, latitude, longitude, tz_offset):
-    """Calculate KP Bhava Chart data based on birth details."""
-    # Calculate Julian Day
+def raman_kp_bava(user_name, birth_date, birth_time, latitude, longitude, tz_offset):
+    """Calculate KP Bhava Chart with Raman ayanamsa, including retrograde, nakshatra, and pada."""
     jd = get_julian_day(birth_date, birth_time, tz_offset)
-
-    # Calculate planetary positions
     planet_positions = calculate_planet_positions(jd)
-
-    # Calculate house cusps (Placidus)
     house_cusps = calculate_house_cusps(jd, latitude, longitude)
-
-    # Assign planets to houses
     house_assignments = assign_planets_to_houses(planet_positions, house_cusps)
-
-    # Calculate significators
     significators = calculate_significators(planet_positions, house_cusps)
 
-    # Detailed planet info
     planet_details = {}
     for planet in PLANETS:
         pos = planet_positions[planet]
+        nakshatra, pada = get_nakshatra_pada(pos)
         planet_details[planet] = {
             'longitude': round(pos, 4),
             'sign': get_sign(pos),
-            'nakshatra': get_nakshatra(pos),
+            'nakshatra': nakshatra,
+            'pada': pada,
             'sub_lord': get_sub_lord(pos),
             'house': house_assignments.get(planet, None),
             'retrograde': planet_positions.get(f"{planet}_retro", False)
         }
 
-    # Detailed cusp info
     cusp_details = []
     for i, cusp in enumerate(house_cusps, 1):
+        nakshatra, pada = get_nakshatra_pada(cusp)
         cusp_details.append({
             'house': i,
             'longitude': round(cusp, 4),
             'sign': get_sign(cusp),
-            'nakshatra': get_nakshatra(cusp),
+            'nakshatra': nakshatra,
+            'pada': pada,
             'sub_lord': get_sub_lord(cusp)
         })
 
-    # Calculate Lagna (Ascendant) sign
-    lagna_longitude = house_cusps[0]  # First house cusp is the Ascendant
-    lagna_sign = get_sign(lagna_longitude)
+    ascendant = {
+        'longitude': cusp_details[0]['longitude'],
+        'sign': cusp_details[0]['sign'],
+        'nakshatra': cusp_details[0]['nakshatra'],
+        'pada': cusp_details[0]['pada'],
+        'sub_lord': cusp_details[0]['sub_lord']
+    }
 
-    # Return calculated data
-    return {
-        'lagna_sign': lagna_sign,
+    response = {
+        'user_name': user_name,
+        'ascendant': ascendant,
         'house_cusps': cusp_details,
         'planetary_positions': planet_details,
         'significators': significators
     }
+    return response

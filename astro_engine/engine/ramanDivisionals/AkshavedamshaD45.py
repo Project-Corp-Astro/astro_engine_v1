@@ -2,13 +2,16 @@ import swisseph as swe
 from datetime import datetime, timedelta
 import math
 
+# Set Swiss Ephemeris path (adjust path as needed)
+swe.set_ephe_path('astro_api/ephe')
+
 # Zodiac signs (0-based index: Aries=0, Taurus=1, ..., Pisces=11)
 SIGNS = [
     'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
     'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
 ]
 
-# Nakshatras (27 nakshatras)
+# Nakshatras list
 NAKSHATRAS = [
     'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
     'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni',
@@ -38,20 +41,13 @@ def format_dms(degrees):
     s = (degrees - d - m / 60) * 3600
     return f"{d}°{m}'{s:.1f}\""
 
-def get_nakshatra(sidereal_lon):
-    """Calculate nakshatra from sidereal longitude."""
-    nakshatra_index = int((sidereal_lon % 360) / 13.3333)
-    return NAKSHATRAS[nakshatra_index]
-
 def get_d45_position(sidereal_lon):
     """Calculate D45 sign based on sidereal longitude."""
-    # Natal sign and degrees within sign
     natal_sign_index = int(sidereal_lon // 30) % 12
     degrees_in_sign = sidereal_lon % 30
     minutes_in_sign = degrees_in_sign * 60
     segment_number = math.floor(minutes_in_sign / 40)  # 40 minutes per segment
 
-    # Determine starting sign based on sign nature
     if natal_sign_index in MOVABLE:
         starting_sign_index = 0  # Aries
     elif natal_sign_index in FIXED:
@@ -61,7 +57,6 @@ def get_d45_position(sidereal_lon):
     else:
         raise ValueError(f"Invalid natal sign index: {natal_sign_index}")
 
-    # Calculate D45 sign index
     d45_sign_index = (starting_sign_index + segment_number) % 12
     d45_sign = SIGNS[d45_sign_index]
     return {'sign': d45_sign, 'sign_index': d45_sign_index}
@@ -70,19 +65,22 @@ def get_d45_house(planet_d45_sign_index, d45_asc_sign_index):
     """Calculate house number using Whole Sign system."""
     return (planet_d45_sign_index - d45_asc_sign_index) % 12 + 1
 
-def raman_akshavedamsha(data):
-    """Calculate the D45 chart with nakshatras."""
-    birth_date = data['birth_date']
-    birth_time = data['birth_time']
-    latitude = float(data['latitude'])
-    longitude = float(data['longitude'])
-    tz_offset = float(data['timezone_offset'])
+def get_nakshatra(longitude):
+    """Determine the nakshatra based on sidereal longitude."""
+    nakshatra_index = int((longitude % 360) / 13.3333) % 27
+    return NAKSHATRAS[nakshatra_index]
 
-    # Calculate Julian Day and set ayanamsa
-    jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
-    swe.set_sid_mode(swe.SIDM_RAMAN)  # Lahiri ayanamsa
+def get_pada(longitude):
+    """Determine the pada (1-4) within the nakshatra based on sidereal longitude."""
+    position_in_nakshatra = (longitude % 360) % 13.3333
+    pada = math.ceil(position_in_nakshatra / 3.3333)
+    return pada
 
-    # Planets to calculate (including Rahu; Ketu will be calculated)
+def raman_Akshavedamsha_D45(birth_date, birth_time, latitude, longitude, timezone_offset, user_name='Unknown'):
+    """Calculate the D45 (Akshavedamsa) chart using Raman ayanamsa."""
+    jd_ut = get_julian_day(birth_date, birth_time, timezone_offset)
+    swe.set_sid_mode(swe.SIDM_RAMAN)  # Raman ayanamsa
+
     planets = [
         (swe.SUN, 'Sun'), (swe.MOON, 'Moon'), (swe.MARS, 'Mars'),
         (swe.MERCURY, 'Mercury'), (swe.JUPITER, 'Jupiter'), (swe.VENUS, 'Venus'),
@@ -90,7 +88,6 @@ def raman_akshavedamsha(data):
     ]
     flag = swe.FLG_SIDEREAL | swe.FLG_SPEED
 
-    # Calculate D1 (natal) positions
     d1_positions = {}
     for planet_id, name in planets:
         pos, _ = swe.calc_ut(jd_ut, planet_id, flag)
@@ -98,50 +95,51 @@ def raman_akshavedamsha(data):
         retro = 'R' if pos[3] < 0 else ''
         d1_positions[name] = (lon, retro)
 
-    # Calculate Ketu (opposite Rahu)
     rahu_lon = d1_positions['Rahu'][0]
     ketu_lon = (rahu_lon + 180) % 360
-    d1_positions['Ketu'] = (ketu_lon, '')
+    d1_positions['Ketu'] = (ketu_lon, 'R')  # Ketu is always retrograde
 
-    # Calculate ascendant longitude (D1)
     cusps, ascmc = swe.houses_ex(jd_ut, latitude, longitude, b'W', flags=swe.FLG_SIDEREAL)
     d1_asc_lon = ascmc[0] % 360
 
-    # Calculate D45 ascendant
-    d45_asc = get_d45_position(d1_asc_lon)
-    d45_asc_sign_index = d45_asc['sign_index']
+    d45_asc_pos = get_d45_position(d1_asc_lon)
+    d45_asc_sign_index = d45_asc_pos['sign_index']
+    asc_nakshatra = get_nakshatra(d1_asc_lon)
+    asc_pada = get_pada(d1_asc_lon)
+    d45_asc = {
+        "sign": d45_asc_pos['sign'],
+        "longitude": format_dms(d1_asc_lon),
+        "nakshatra": asc_nakshatra,
+        "pada": asc_pada
+    }
 
-    # Calculate D45 positions for all planets
     d45_positions = {}
     for planet, (d1_lon, retro) in d1_positions.items():
         d45_pos = get_d45_position(d1_lon)
         house = get_d45_house(d45_pos['sign_index'], d45_asc_sign_index)
         nakshatra = get_nakshatra(d1_lon)
+        pada = get_pada(d1_lon)
         d45_positions[planet] = {
             "sign": d45_pos['sign'],
             "house": house,
             "retrograde": retro,
             "longitude": format_dms(d1_lon),
-            "nakshatra": nakshatra
+            "nakshatra": nakshatra,
+            "pada": pada
         }
 
-    # Assign house signs based on D45 ascendant (Whole Sign system)
     house_signs = [
         {"house": i + 1, "sign": SIGNS[(d45_asc_sign_index + i) % 12]}
         for i in range(12)
     ]
 
-    # Prepare response
     response = {
-        "user_name": data.get('user_name', 'Unknown'),
-        "d45_ascendant": {
-            "sign": d45_asc['sign'],
-            "longitude": format_dms(d1_asc_lon)
-        },
+        "user_name": user_name,
+        "d45_ascendant": d45_asc,
         "planetary_positions": d45_positions,
         "house_signs": house_signs,
         "metadata": {
-            "ayanamsa": "Lahiri",
+            "ayanamsa": "Raman",
             "chart_type": "Akshavedamsa (D45)",
             "house_system": "Whole Sign",
             "calculation_time": datetime.utcnow().isoformat()
