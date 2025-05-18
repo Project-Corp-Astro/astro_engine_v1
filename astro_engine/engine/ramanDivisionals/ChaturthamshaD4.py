@@ -169,7 +169,7 @@ def raman_Chaturthamsha_D4(birth_date, birth_time, latitude, longitude, timezone
             "ascendant": ascendant_json,
             "house_signs": house_signs,
             "notes": {
-                "ayanamsa": "Lahiri",
+                "ayanamsa": "Raman",
                 "ayanamsa_value": f"{ayanamsa_value:.6f}",
                 "chart_type": "Chaturthamsha (D4)",
                 "house_system": "Raman"

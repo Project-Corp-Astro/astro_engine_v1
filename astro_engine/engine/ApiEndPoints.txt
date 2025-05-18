@@ -3,6 +3,7 @@
 Ramam Routes :
 
 http://localhost:5000/raman/natal
+http://localhost:5000/raman/transit
 http://localhost:5000/raman/calculate_moon_chart
 http://localhost:5000/raman/calculate_sun_chart
 http://localhost:5000/raman/calculate_sripathi_bhava
@@ -10,7 +11,7 @@ http://localhost:5000/raman/calculate_sripathi_bhava
 http://localhost:5000/raman/calculate_d2_hora
 http://localhost:5000/raman/calculate_d3_chart
 http://localhost:5000/raman/calculate_d4
-http://localhost:5000/raman/calculate_d7_chart
+http://localhost:5000/raman/calculate_d7_chart  (vishu rahu/kethu)
 http://localhost:5000/raman/navamsha_d9
 http://localhost:5000/raman/calculate_d10
 http://localhost:5000/raman/calculate_d12
@@ -18,9 +19,46 @@ http://localhost:5000/raman/calculate_d16
 http://localhost:5000/raman/calculate_d20
 http://localhost:5000/raman/calculate_d24
 http://localhost:5000/raman/calculate_d40
+http://localhost:5000/raman/calculate_d45  issue(goutham)
 http://localhost:5000/raman/calculate_d60
 
-http://localhost:5000/raman/calculate_arudha_lagna
+http://localhost:5000/raman/calculate_arudha_lagna  (debug) 
 http://localhost:5000/raman/calculate_sripathi_bhava
-http://localhost:5000/raman/calculate_kp_bhava
+http://localhost:5000/raman/calculate_kp_bhava      (vishun(rahu/kethu))
 http://localhost:5000/raman/calculate_equal_bhava_lagna
+
+
+
+Lahairi Routes :
+
+http://localhost:5000/lahairi/natal
+http://localhost:5000/lahairi/transit
+http://localhost:5000/lahairi/calculate_moon_chart
+http://localhost:5000/lahairi/calculate_sun_chart
+http://localhost:5000/lahairi/calculate_sripathi_bhava
+
+http://localhost:5000/lahairi/calculate_d2_hora
+http://localhost:5000/lahairi/calculate_d3
+http://localhost:5000/lahairi/calculate_d4
+http://localhost:5000/lahairi/calculate_d7_chart
+http://localhost:5000/lahairi/navamsa
+http://localhost:5000/lahairi/calculate_d10
+http://localhost:5000/lahairi/calculate_d12
+http://localhost:5000/lahairi/calculate_d16
+http://localhost:5000/lahairi/calculate_d20
+http://localhost:5000/lahairi/calculate_d24
+http://localhost:5000/lahairi/calculate_d40
+http://localhost:5000/lahairi/calculate_d45
+http://localhost:5000/lahairi/calculate_d60
+
+http://localhost:5000/lahairi/calculate_arudha_lagna
+http://localhost:5000/lahairi/calculate_sripathi_bhava
+http://localhost:5000/lahairi/calculate_kp_bhava
+http://localhost:5000/lahairi/calculate_equal_bhava_lagna
+http://localhost:5000/lahairi/synastry
+http://localhost:5000/lahairi/composite 
+http://localhost:5000/lahairi/progressed
+http://localhost:5000/lahairi/chaldean_numerology
+http://localhost:5000/lahairi/lo_shu_grid_numerology
+http://localhost:5000/lahairi/calculate_maha_antar_dasha
+http://localhost:5000/lahairi/calculate_vimshottari_Sookshama

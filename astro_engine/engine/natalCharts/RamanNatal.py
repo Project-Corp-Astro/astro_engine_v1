@@ -321,7 +321,7 @@ def get_nakshatra_and_pada(lon):
 # Main Calculation Function
 def raman_natal(birth_data):
     """
-    Calculate natal chart data using Lahiri ayanamsa, including retrograde, nakshatras, and padas.
+    Calculate natal chart data using Raman ayanamsa, including retrograde, nakshatras, and padas.
     
     Parameters:
     - birth_data: Dictionary with birth details
@@ -339,7 +339,7 @@ def raman_natal(birth_data):
     hour_decimal = ut_datetime.hour + ut_datetime.minute / 60.0 + ut_datetime.second / 3600.0
     jd_ut = swe.julday(ut_datetime.year, ut_datetime.month, ut_datetime.day, hour_decimal)
 
-    # Set Lahiri ayanamsa
+    # Set Raman ayanamsa
     swe.set_sid_mode(swe.SIDM_RAMAN)
     ayanamsa_value = swe.get_ayanamsa_ut(jd_ut)
 

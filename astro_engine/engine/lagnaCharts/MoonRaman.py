@@ -234,7 +234,7 @@ def raman_moon_chart(data):
         "house_cusps": house_data,
         "planetary_positions": planetary_data,
         "metadata": {
-            "ayanamsa": "Lahiri",
+            "ayanamsa": "Raman",
             "house_system": "Whole Sign",
             "calculation_time": datetime.utcnow().isoformat(),
             "input": {

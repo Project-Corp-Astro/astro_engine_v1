@@ -228,7 +228,7 @@ def raman_Dashamsha_D10(birth_date, birth_time, latitude, longitude, timezone_of
         "ascendant": ascendant_json,
         "house_signs": house_signs,
         "notes": {
-            "ayanamsa": "Lahiri",
+            "ayanamsa": "Raman",
             "chart_type": "Dashamsha (D10)",
             "house_system": "Whole Sign",
             "d1_ascendant_longitude": ascendant_d1_sidereal

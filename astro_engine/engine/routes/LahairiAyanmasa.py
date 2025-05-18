@@ -1337,14 +1337,20 @@ def calculate_vimshottari_Sookshama():
 def calculate_ashtakvarga():
     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
     try:
+        # Get JSON data from request
         data = request.get_json()
         if not data:
+            logger.error("No JSON data provided in request")
             return jsonify({"error": "No JSON data provided"}), 400
 
+        # Validate required fields
         required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(key in data for key in required):
-            return jsonify({"error": "Missing required parameters"}), 400
+            missing = [key for key in required if key not in data]
+            logger.error(f"Missing required parameters: {missing}")
+            return jsonify({"error": f"Missing required parameters: {missing}"}), 400
 
+        # Extract and validate input data
         user_name = data['user_name']
         birth_date = data['birth_date']
         birth_time = data['birth_time']
@@ -1353,10 +1359,16 @@ def calculate_ashtakvarga():
         tz_offset = float(data['timezone_offset'])
 
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            logger.error(f"Invalid coordinates: latitude={latitude}, longitude={longitude}")
             return jsonify({"error": "Invalid latitude or longitude"}), 400
 
-        # Call the calculation function
+        # Calculate astrological data
         result = raman_bhinnashtakavarga(birth_date, birth_time, latitude, longitude, tz_offset)
+        
+        # Ensure planetary_positions exists in result
+        if 'planetary_positions' not in result or not result['planetary_positions']:
+            logger.error("planetary_positions missing or empty in calculation result")
+            return jsonify({"error": "Failed to calculate planetary positions"}), 500
 
         # Construct response
         response = {
@@ -1370,7 +1382,7 @@ def calculate_ashtakvarga():
             },
             "planetary_positions": result["planetary_positions"],
             "ascendant": result["ascendant"],
-            "bhinnashtakavarga_tables": result["bhinnashtakavarga_tables"],
+            "bhinnashtakavarga": result["bhinnashtakavarga"],
             "notes": {
                 "ayanamsa": "Raman",
                 "ayanamsa_value": f"{result['ayanamsa']:.6f}",
@@ -1378,11 +1390,15 @@ def calculate_ashtakvarga():
                 "house_system": "Whole Sign"
             }
         }
+        logger.info("Successfully calculated Bhinnashtakavarga")
         return jsonify(response), 200
 
     except ValueError as ve:
-        return jsonify({"error": str(ve)}), 400
+        logger.error(f"ValueError occurred: {str(ve)}")
+        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
     except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
 
 
