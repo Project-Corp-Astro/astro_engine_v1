@@ -4,7 +4,10 @@ import logging
 from venv import logger
 
 
-from astro_engine.engine.divisionalCharts.ChathruthamshaD4 import  lahairi_Chaturthamsha
+from astro_engine.engine.dashas.AntarDasha import calculate_dasha_antar_balance, calculate_mahadasha_periods, calculate_moon_sidereal_antar_position, get_julian_dasha_day, get_nakshatra_and_antar_lord
+from astro_engine.engine.dashas.Pratyantardashas import calculate_Pratythardasha_periods, calculate_moon_praty_sidereal_position, calculate_pratythar_dasha_balance, get_julian_pratyathar_day, get_nakshatra_party_and_lord
+from astro_engine.engine.dashas.Sookashama import calculate_moon_sookshma_sidereal_position, calculate_sookshma_dasha_balance, calculate_sookshma_dasha_periods, get_julian_sookshma_day, get_nakshatra_and_lord_sookshma
+from astro_engine.engine.divisionalCharts.ChathruthamshaD4 import  get_julian_day, lahairi_Chaturthamsha
 from astro_engine.engine.divisionalCharts.ChaturvimshamshaD24 import  lahairi_Chaturvimshamsha
 from astro_engine.engine.divisionalCharts.DashamshaD10 import  lahairi_Dashamsha
 from astro_engine.engine.divisionalCharts.DreshkanaD3 import PLANET_NAMES, lahairi_drerkhana
@@ -26,11 +29,7 @@ from astro_engine.engine.numerology.CompositeChart import  lahairi_composite
 from astro_engine.engine.numerology.LoShuGridNumerology import calculate_lo_shu_grid
 from astro_engine.engine.ashatakavargha.Binnastakavargha import  raman_bhinnashtakavarga
 from astro_engine.engine.numerology.NumerologyData import calculate_chaldean_numbers, calculate_date_numerology, get_sun_sign, get_element_from_number, get_sun_sign_element, get_elemental_compatibility, personal_interpretations, business_interpretations, ruling_planets, planet_insights, sun_sign_insights, number_colors, number_gemstones, planet_days
-from astro_engine.engine.dashas.AntarDasha import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
-from astro_engine.engine.dashas.Pratyantardashas import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
-from astro_engine.engine.dashas.Sookashama import calculate_dasha_balance, calculate_mahadasha_periods, calculate_moon_sidereal_position, get_nakshatra_and_lord
 from astro_engine.engine.divisionalCharts.AkshavedamshaD45 import  lahairi_Akshavedamsha
-from astro_engine.engine.divisionalCharts.SaptavimshamshaD27 import  lahairi_Saptavimshamsha
 from astro_engine.engine.divisionalCharts.ShashtiamshaD60 import  lahairi_Shashtiamsha
 from astro_engine.engine.divisionalCharts.VimshamshaD20 import  lahairi_Vimshamsha
 from astro_engine.engine.natalCharts.SudharashanaChakara import calculate_sidereal_positions, generate_chart, get_sign
@@ -1163,8 +1162,26 @@ def lo_shu():
     return jsonify(result)
 
 # Vimshottari Mahadasha and Antardashas
-@bp.route('/lahairi/calculate_maha_antar_dasha', methods=['POST'])
-def calculate_vimshottari_dasha():
+
+
+@bp.route('/lahairi/calculate_antar_dasha', methods=['POST'])
+def calculate_vimshottari_antar_dasha():
+    """
+    Calculate Vimshottari Mahadasha and Antardashas based on birth details.
+    
+    Expected JSON Input:
+    {
+        "user_name": "Anusha kayakokula",
+        "birth_date": "1998-10-15",
+        "birth_time": "10:40:30",
+        "latitude": "17.3850",
+        "longitude": "78.4867",
+        "timezone_offset": 5.5
+    }
+    
+    Returns:
+        JSON response with Mahadasha and Antardasha details.
+    """
     try:
         data = request.get_json()
         if not data:
@@ -1181,15 +1198,24 @@ def calculate_vimshottari_dasha():
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        jd_birth = get_julian_day(birth_date, birth_time, tz_offset)
-        moon_longitude = calculate_moon_sidereal_position(jd_birth)
-        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord(moon_longitude)
+        # Step 1: Convert birth date and time to Julian Day in UT
+        jd_birth = get_julian_dasha_day(birth_date, birth_time, tz_offset)
+
+        # Step 2: Calculate Moon's sidereal position with Lahiri Ayanamsa
+        moon_longitude = calculate_moon_sidereal_antar_position(jd_birth)
+
+        # Step 3: Determine Nakshatra and ruling planet
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_antar_lord(moon_longitude)
         if not nakshatra:
             return jsonify({"error": "Unable to determine Nakshatra"}), 500
 
-        remaining_time, mahadasha_duration, elapsed_time = calculate_dasha_balance(moon_longitude, nakshatra_start, lord)
+        # Step 4: Calculate remaining Mahadasha time and elapsed time
+        remaining_time, mahadasha_duration, elapsed_time = calculate_dasha_antar_balance(moon_longitude, nakshatra_start, lord)
+
+        # Step 5: Calculate Mahadasha periods with Antardashas
         mahadasha_periods = calculate_mahadasha_periods(birth_date, remaining_time, lord, elapsed_time)
 
+        # Step 6: Construct response
         response = {
             "user_name": user_name,
             "nakshatra_at_birth": nakshatra,
@@ -1203,9 +1229,12 @@ def calculate_vimshottari_dasha():
     except Exception as e:
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
-# Vimshottari Antardasha and Pratyantardashas
-@bp.route('/lahairi/calculate_antar_prathythar_dasha', methods=['POST'])
-def calculate_vimshottari_Pratyantardashas():
+
+
+
+# # Vimshottari Antardasha and Pratyantardashas
+@bp.route('/lahairi/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
+def calculate_vimshottari_pratyantar_dasha():
     try:
         data = request.get_json()
         if not data:
@@ -1222,19 +1251,19 @@ def calculate_vimshottari_Pratyantardashas():
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        jd_birth = get_julian_day(birth_date, birth_time, tz_offset)
-        moon_longitude = calculate_moon_sidereal_position(jd_birth)
-        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord(moon_longitude)
+        jd_birth = get_julian_pratyathar_day(birth_date, birth_time, tz_offset)
+        moon_longitude = calculate_moon_praty_sidereal_position(jd_birth)
+        nakshatra, lord, nakshatra_start = get_nakshatra_party_and_lord(moon_longitude)
         if not nakshatra:
             return jsonify({"error": "Unable to determine Nakshatra"}), 500
 
-        remaining_time, mahadasha_duration, elapsed_time = calculate_dasha_balance(moon_longitude, nakshatra_start, lord)
-        mahadasha_periods = calculate_mahadasha_periods(birth_date, remaining_time, lord, elapsed_time)
+        remaining_time, mahadasha_duration, elapsed_time = calculate_pratythar_dasha_balance(moon_longitude, nakshatra_start, lord)
+        mahadasha_periods = calculate_Pratythardasha_periods(jd_birth, remaining_time, lord, elapsed_time)
 
         response = {
             "user_name": user_name,
             "nakshatra_at_birth": nakshatra,
-            "moon_longitude": round(moon_longitude, 4),
+            "moon_longitude": moon_longitude,
             "mahadashas": mahadasha_periods
         }
         return jsonify(response), 200
@@ -1244,9 +1273,30 @@ def calculate_vimshottari_Pratyantardashas():
     except Exception as e:
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
-# Vimshottari Pratyantardasha and Sookshma Dasha
-@bp.route('/lahairi/calculate_vimshottari_Sookshama', methods=['POST'])
-def calculate_vimshottari_Sookshama():
+
+
+
+# # Vimshottari Pratyantardasha and Sookshma Dasha
+
+
+@bp.route('/lahairi/calculate_antar_pratyantar_sookshma_dasha', methods=['POST'])
+def calculate_vimshottari_sookshma_dasha():
+    """
+    Calculate Vimshottari Dasha periods including Sookshma Dashas.
+    
+    Expected JSON Input:
+    {
+        "user_name": "Anusha kayakokula",
+        "birth_date": "1998-10-15",
+        "birth_time": "10:40:30",
+        "latitude": "17.3850",
+        "longitude": "78.4867",
+        "timezone_offset": 5.5
+    }
+    
+    Returns:
+        JSON response with Mahadasha, Antardasha, Pratyantardasha, and Sookshma Dasha details.
+    """
     try:
         data = request.get_json()
         if not data:
@@ -1263,14 +1313,14 @@ def calculate_vimshottari_Sookshama():
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        jd_birth = get_julian_day(birth_date, birth_time, tz_offset)
-        moon_longitude = calculate_moon_sidereal_position(jd_birth)
-        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord(moon_longitude)
+        jd_birth = get_julian_sookshma_day(birth_date, birth_time, tz_offset)
+        moon_longitude = calculate_moon_sookshma_sidereal_position(jd_birth)
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_sookshma(moon_longitude)
         if not nakshatra:
             return jsonify({"error": "Unable to determine Nakshatra"}), 500
 
-        remaining_time, mahadasha_duration, elapsed_time = calculate_dasha_balance(moon_longitude, nakshatra_start, lord)
-        mahadasha_periods = calculate_mahadasha_periods(birth_date, remaining_time, lord, elapsed_time)
+        remaining_time, mahadasha_duration, elapsed_time = calculate_sookshma_dasha_balance(moon_longitude, nakshatra_start, lord)
+        mahadasha_periods = calculate_sookshma_dasha_periods(birth_date, remaining_time, lord, elapsed_time)
 
         response = {
             "user_name": user_name,
@@ -1284,6 +1334,7 @@ def calculate_vimshottari_Sookshama():
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
 
 
 
@@ -1333,7 +1384,7 @@ def calculate_vimshottari_Sookshama():
 #         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
-@bp.route('/calculate_ashtakvarga', methods=['POST'])
+@bp.route('/lahairi/calculate_binnatakvarga', methods=['POST'])
 def calculate_ashtakvarga():
     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
     try:

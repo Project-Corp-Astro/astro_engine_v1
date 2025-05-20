@@ -1,6 +1,6 @@
 import swisseph as swe
-from math import floor
 from datetime import datetime, timedelta
+from math import floor
 
 # Nakshatra details: name, start degree, ruling planet
 NAKSHATRAS = [
@@ -24,14 +24,14 @@ PLANET_DURATIONS = {
 # Fixed order of planets for Mahadasha and Antardasha sequence
 PLANET_ORDER = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"]
 
-def get_julian_day(date_str, time_str, tz_offset):
+def get_julian_dasha_day(date_str, time_str, tz_offset):
     """Convert local birth date and time to Julian Day in Universal Time (UT)."""
     local_dt = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
     ut_dt = local_dt - timedelta(hours=tz_offset)
     hour_decimal = ut_dt.hour + (ut_dt.minute / 60.0) + (ut_dt.second / 3600.0)
     return swe.julday(ut_dt.year, ut_dt.month, ut_dt.day, hour_decimal, swe.GREG_CAL)
 
-def calculate_moon_sidereal_position(jd):
+def calculate_moon_sidereal_antar_position(jd):
     """Calculate the Moon's sidereal longitude using Lahiri Ayanamsa."""
     swe.set_sid_mode(swe.SIDM_LAHIRI)  # Set Lahiri Ayanamsa
     moon_tropical = swe.calc_ut(jd, swe.MOON)[0][0]  # Tropical longitude
@@ -39,7 +39,7 @@ def calculate_moon_sidereal_position(jd):
     moon_sidereal = (moon_tropical - ayanamsa) % 360  # Sidereal longitude normalized to 0–360
     return moon_sidereal
 
-def get_nakshatra_and_lord(moon_longitude):
+def get_nakshatra_and_antar_lord(moon_longitude):
     """Determine the nakshatra, its ruling planet, and start longitude."""
     for nakshatra, start, lord in NAKSHATRAS:
         if start <= moon_longitude < start + 13.333:
@@ -49,7 +49,7 @@ def get_nakshatra_and_lord(moon_longitude):
         return "Revati", "Mercury", 346.666
     return None, None, None
 
-def calculate_dasha_balance(moon_longitude, nakshatra_start, lord):
+def calculate_dasha_antar_balance(moon_longitude, nakshatra_start, lord):
     """Calculate the remaining balance and elapsed time of the starting Mahadasha."""
     nakshatra_span = 13.333  # Each nakshatra spans 13°20' (13.333 degrees)
     degrees_in_nakshatra = moon_longitude - nakshatra_start
@@ -61,7 +61,7 @@ def calculate_dasha_balance(moon_longitude, nakshatra_start, lord):
     remaining_time = mahadasha_duration - elapsed_time
     return remaining_time, mahadasha_duration, elapsed_time
 
-def calculate_antardashas(mahadasha_planet, mahadasha_duration, start_date, elapsed_time=0):
+def lahiri_antar_dasha(mahadasha_planet, mahadasha_duration, start_date, elapsed_time=0):
     """Calculate Antardashas for a given Mahadasha with precise start and end dates."""
     antardashas = []
     current_date = datetime.strptime(start_date, "%Y-%m-%d")
@@ -115,11 +115,11 @@ def calculate_mahadasha_periods(birth_date, remaining_time, starting_planet, ela
         if i == 0:
             # Starting Mahadasha with balance
             duration = remaining_time
-            antardashas = calculate_antardashas(current_planet, mahadasha_duration, birth_date, elapsed_time)
+            antardashas = lahiri_antar_dasha(current_planet, mahadasha_duration, birth_date, elapsed_time)
         else:
             # Full Mahadasha
             duration = mahadasha_duration
-            antardashas = calculate_antardashas(current_planet, duration, current_date.strftime("%Y-%m-%d"))
+            antardashas = lahiri_antar_dasha(current_planet, duration, current_date.strftime("%Y-%m-%d"))
         
         end_date = current_date + timedelta(days=duration * 365.25)
         mahadasha_sequence.append({
