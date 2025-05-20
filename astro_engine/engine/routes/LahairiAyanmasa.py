@@ -42,7 +42,7 @@ from astro_engine.engine.numerology.SynatryChart import analyze_house_overlays, 
 bp = Blueprint('bp_routes', __name__)
 
 # Natal Chart
-@bp.route('/lahairi/natal', methods=['POST'])
+@bp.route('/lahiri/natal', methods=['POST'])
 def natal_chart():
     try:
         birth_data = request.get_json()
@@ -120,7 +120,7 @@ def natal_chart():
 
 
 # Transit or Gochar Chart
-@bp.route('/lahairi/transit', methods=['POST'])
+@bp.route('/lahiri/transit', methods=['POST'])
 def transit_chart():
     try:
         # Get JSON data from request
@@ -146,7 +146,7 @@ def transit_chart():
 
 # Sun Chart
 
-@bp.route('/lahairi/calculate_sun_chart', methods=['POST'])
+@bp.route('/lahiri/calculate_sun_chart', methods=['POST'])
 def calculate_sun_chart():
     """
     API endpoint to calculate Sun Chart (sidereal) with Whole Sign house system.
@@ -172,7 +172,7 @@ def calculate_sun_chart():
 
 # Moon Chart
 
-@bp.route('/lahairi/calculate_moon_chart', methods=['POST'])
+@bp.route('/lahiri/calculate_moon_chart', methods=['POST'])
 def calculate_moon_chart():
     """
     API endpoint to calculate Moon Chart (sidereal) with Whole Sign house system.
@@ -197,7 +197,7 @@ def calculate_moon_chart():
 
 
 # Sudarshan Chakra
-@bp.route('/calculate_sudarshan_chakra', methods=['POST'])
+@bp.route('/lahiri/calculate_sudarshan_chakra', methods=['POST'])
 def calculate_sudarshan_chakra():
     try:
         data = request.get_json()
@@ -242,7 +242,7 @@ def calculate_sudarshan_chakra():
 
 # Hora (D-2)
 
-@bp.route('/lahairi/calculate_d2_hora', methods=['POST'])
+@bp.route('/lahiri/calculate_d2_hora', methods=['POST'])
 def calculate_d2_hora():
     """API endpoint to calculate the D2 Hora chart."""
     try:
@@ -281,7 +281,7 @@ def calculate_d2_hora():
 
 # Dreshkana (D-3)
 
-@bp.route('/lahairi/calculate_d3', methods=['POST'])
+@bp.route('/lahiri/calculate_d3', methods=['POST'])
 def calculate_d3_chart_endpoint():
     """API endpoint to calculate D3 chart with retrograde status, nakshatras, and padas."""
     try:
@@ -309,7 +309,7 @@ def calculate_d3_chart_endpoint():
 
 
 # Chaturthamsha (D-4)
-@bp.route('/lahairi/calculate_d4', methods=['POST'])
+@bp.route('/lahiri/calculate_d4', methods=['POST'])
 def calculate_d4():
     """API endpoint to calculate the Chaturthamsha (D4) chart."""
     try:
@@ -336,7 +336,7 @@ def calculate_d4():
 
 
 # Saptamsha (D-7)
-@bp.route('/lahairi/calculate_d7_chart', methods=['POST'])
+@bp.route('/lahiri/calculate_d7_chart', methods=['POST'])
 def calculate_d7_chart_endpoint():
     """API endpoint to calculate D7 chart from birth details."""
     try:
@@ -372,7 +372,7 @@ def calculate_d7_chart_endpoint():
 
 # Dashamsha (D-10)
 
-@bp.route('/lahairi/calculate_d10', methods=['POST'])
+@bp.route('/lahiri/calculate_d10', methods=['POST'])
 def calculate_d10():
     """
     Flask API endpoint to calculate the Dashamsha (D10) chart accurately.
@@ -401,7 +401,7 @@ def calculate_d10():
 
 
 # Dwadashamsha (D-12)
-@bp.route('/lahairi/calculate_d12', methods=['POST'])
+@bp.route('/lahiri/calculate_d12', methods=['POST'])
 def calculate_d12():
     """
     Flask API endpoint to calculate the Dwadasamsa (D12) chart.
@@ -443,7 +443,7 @@ def calculate_d12():
 
 # Shodashamsha (D-16)
 
-@bp.route('/lahairi/calculate_d16', methods=['POST'])
+@bp.route('/lahiri/calculate_d16', methods=['POST'])
 def calculate_d16():
     try:
         data = request.get_json()
@@ -476,7 +476,7 @@ def calculate_d16():
 
 
 # Vimshamsha (D-20)
-@bp.route('/lahairi/calculate_d20', methods=['POST'])
+@bp.route('/lahiri/calculate_d20', methods=['POST'])
 def calculate_d20():
     """
     API endpoint to calculate the D20 (Vimsamsa) chart.
@@ -524,7 +524,7 @@ def calculate_d20():
 
 # Chaturvimshamsha (D-24)
 
-@bp.route('/lahairi/calculate_d24', methods=['POST'])
+@bp.route('/lahiri/calculate_d24', methods=['POST'])
 def calculate_d24():
     """API endpoint to calculate D24 chart."""
     try:
@@ -587,7 +587,7 @@ def calculate_d24():
 
 
 # Khavedamsha (D-40)
-@bp.route('/lahairi/calculate_d40', methods=['POST'])
+@bp.route('/lahiri/calculate_d40', methods=['POST'])
 def calculate_d40():
     """API endpoint to calculate the D40 chart."""
     try:
@@ -614,7 +614,7 @@ def calculate_d40():
 
 
 # Akshavedamsha (D-45)
-@bp.route('/lahairi/calculate_d45', methods=['POST'])
+@bp.route('/lahiri/calculate_d45', methods=['POST'])
 def calculate_d45():
     try:
         data = request.get_json()
@@ -644,7 +644,7 @@ def calculate_d45():
 
 # Shashtiamsha (D-60)
 
-@bp.route('/lahairi/calculate_d60', methods=['POST'])
+@bp.route('/lahiri/calculate_d60', methods=['POST'])
 def calculate_d60():
     """API endpoint to calculate the D60 chart."""
     try:
@@ -672,7 +672,7 @@ def calculate_d60():
 
 
 # Navamsa Chart D9
-@bp.route('/lahairi/navamsa', methods=['POST'])
+@bp.route('/lahiri/navamsa', methods=['POST'])
 def navamsa_chart():
     """API endpoint to calculate Navamsa (D9) chart with retrograde, nakshatras, and padas."""
     try:
@@ -699,7 +699,7 @@ def navamsa_chart():
 
 
 # Sripathi Bhava
-@bp.route('/lahairi/calculate_sripathi_bhava', methods=['POST'])
+@bp.route('/lahiri/calculate_sripathi_bhava', methods=['POST'])
 def calculate_sripathi_bhava():
     """Compute the Sripathi Bhava Chart and return JSON output."""
     try:
@@ -735,7 +735,7 @@ def calculate_sripathi_bhava():
 
 
 # KP Bhava
-@bp.route('/lahairi/calculate_kp_bhava', methods=['POST'])
+@bp.route('/lahiri/calculate_kp_bhava', methods=['POST'])
 def calculate_kp_bhava():
     """API endpoint to calculate KP Bhava chart."""
     data = request.get_json()
@@ -813,7 +813,7 @@ def calculate_kp_bhava():
 
 
 
-@bp.route('/lahairi/calculate_equal_bhava_lagna', methods=['POST'])
+@bp.route('/lahiri/calculate_equal_bhava_lagna', methods=['POST'])
 def calculate_equal_bhava_lagna():
     """API endpoint to calculate Equal Bhava Lagna, house cusps, and planetary positions."""
     try:
@@ -845,7 +845,7 @@ def calculate_equal_bhava_lagna():
         return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
 
 # Bhava Lagna
-@bp.route('/lahairi/calculate_bhava_lagna', methods=['POST'])
+@bp.route('/lahiri/calculate_bhava_lagna', methods=['POST'])
 def calculate_bhava_lagna():
     try:
         data = request.get_json()
@@ -867,7 +867,7 @@ def calculate_bhava_lagna():
 
 # Arudha lagna
 
-@bp.route('/lahairi/calculate_arudha_lagna', methods=['POST'])
+@bp.route('/lahiri/calculate_arudha_lagna', methods=['POST'])
 def calculate_arudha_lagna():
     """API endpoint to calculate Arudha Lagna chart with retrograde, nakshatras, and padas."""
     try:
@@ -908,7 +908,7 @@ def calculate_arudha_lagna():
 
 # Synastry
 
-@bp.route('/lahairi/synastry', methods=['POST'])
+@bp.route('/lahiri/synastry', methods=['POST'])
 def synastry():
     data = request.get_json()
     if not data or 'person_a' not in data or 'person_b' not in data:
@@ -978,7 +978,7 @@ def synastry():
 
 # Composite Chart
 
-@bp.route('/lahairi/composite', methods=['POST'])
+@bp.route('/lahiri/composite', methods=['POST'])
 def composite_chart():
     data = request.get_json()
     if not data or 'person_a' not in data or 'person_b' not in data:
@@ -1021,7 +1021,7 @@ def composite_chart():
 
 # Progressed Chart
 
-@bp.route('/lahairi/progressed', methods=['POST'])
+@bp.route('/lahiri/progressed', methods=['POST'])
 def progressed_chart():
     """API endpoint to calculate the progressed chart."""
     data = request.get_json()
@@ -1063,7 +1063,7 @@ def progressed_chart():
 
 
 # Chaldean Numerology
-@bp.route('/lahairi/chaldean_numerology', methods=['POST'])
+@bp.route('/lahiri/chaldean_numerology', methods=['POST'])
 def numerology():
     try:
         data = request.get_json()
@@ -1142,7 +1142,7 @@ def numerology():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 # Lo Shu Grid Numerology
-@bp.route('/lahairi/lo_shu_grid_numerology', methods=['POST'])
+@bp.route('/lahiri/lo_shu_grid_numerology', methods=['POST'])
 def lo_shu():
     data = request.get_json()
     birth_date = data.get('birth_date')
@@ -1164,7 +1164,7 @@ def lo_shu():
 # Vimshottari Mahadasha and Antardashas
 
 
-@bp.route('/lahairi/calculate_antar_dasha', methods=['POST'])
+@bp.route('/lahiri/calculate_antar_dasha', methods=['POST'])
 def calculate_vimshottari_antar_dasha():
     """
     Calculate Vimshottari Mahadasha and Antardashas based on birth details.
@@ -1233,7 +1233,7 @@ def calculate_vimshottari_antar_dasha():
 
 
 # # Vimshottari Antardasha and Pratyantardashas
-@bp.route('/lahairi/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
+@bp.route('/lahiri/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
 def calculate_vimshottari_pratyantar_dasha():
     try:
         data = request.get_json()
@@ -1279,7 +1279,7 @@ def calculate_vimshottari_pratyantar_dasha():
 # # Vimshottari Pratyantardasha and Sookshma Dasha
 
 
-@bp.route('/lahairi/calculate_antar_pratyantar_sookshma_dasha', methods=['POST'])
+@bp.route('/lahiri/calculate_antar_pratyantar_sookshma_dasha', methods=['POST'])
 def calculate_vimshottari_sookshma_dasha():
     """
     Calculate Vimshottari Dasha periods including Sookshma Dashas.
@@ -1339,7 +1339,7 @@ def calculate_vimshottari_sookshma_dasha():
 
 
 # Binnashtakavarga
-# @bp.route('/lahairi/calculate_binnashtakavarga', methods=['POST'])
+# @bp.route('/lahiri/calculate_binnashtakavarga', methods=['POST'])
 # def ashtakavarga_api_calculate_ashtakavarga():
 #     try:
 #         data = request.get_json()
@@ -1384,7 +1384,7 @@ def calculate_vimshottari_sookshma_dasha():
 #         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
-@bp.route('/lahairi/calculate_binnatakvarga', methods=['POST'])
+@bp.route('/lahiri/calculate_binnatakvarga', methods=['POST'])
 def calculate_ashtakvarga():
     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
     try:
