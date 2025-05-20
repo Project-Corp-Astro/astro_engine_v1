@@ -18,6 +18,7 @@ from astro_engine.engine.divisionalCharts.NavamshaD9 import  lahairi_navamsha_ch
 from astro_engine.engine.divisionalCharts.SaptamshaD7 import  lahairi_saptamsha
 from astro_engine.engine.divisionalCharts.ShodasmasD16 import  lahairi_Shodashamsha
 
+from astro_engine.engine.divisionalCharts.TrimshamshaD30 import assign_houses_d30, calculate_sidereal_longitudes_d30, get_julian_day_d30, lahiri_trimshamsha_d30
 from astro_engine.engine.lagnaCharts.ArudhaLagna import lahairi_arudha_lagna
 from astro_engine.engine.lagnaCharts.BavaLagna import  lahairi_bava_lagan
 from astro_engine.engine.lagnaCharts.EqualLagan import SIGNS,  lahairi_equal_bava
@@ -583,6 +584,48 @@ def calculate_d24():
 #     except Exception as e:
 #         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
+
+
+
+
+#  Trimshamsha D-30 
+@bp.route('/calculate_d30_chart', methods=['POST'])
+def calculate_d30_chart():
+    """API endpoint to calculate D30 chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = data['latitude']
+        longitude = data['longitude']
+        tz_offset = float(data['timezone_offset'])
+
+        jd = get_julian_day_d30(birth_date, birth_time, tz_offset)
+        natal_positions = calculate_sidereal_longitudes_d30(jd, latitude, longitude)
+
+        d30_positions = lahiri_trimshamsha_d30(natal_positions)
+
+        ascendant_sign = d30_positions['Ascendant']['sign']
+        assign_houses_d30(d30_positions, ascendant_sign)
+
+        response = {
+            "user_name": data.get('user_name', 'Unknown'),
+            "natal_positions": {p: natal_positions[p]['longitude'] for p in natal_positions},
+            "d30_chart": d30_positions
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 
