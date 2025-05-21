@@ -1012,7 +1012,7 @@ def calculate_prataytar_dasha():
 
 
 
-
+#  Vimshottari of  Pratyantardashas Dasha  and Sookshma dasha 
 @rl.route('/raman/calculate_sookshma_dasha_raman', methods=['POST'])
 def calculate_sookshmadasha_dasha():
     """API endpoint to calculate Vimshottari Dasha periods."""
@@ -1056,8 +1056,8 @@ def calculate_sookshmadasha_dasha():
 
 
 
-
-@rl.route('/raman/calculate_raman_prana_dasha', methods=['POST'])
+# Vimshottari of  Prana dasha with all dash sequence.
+@rl.route('/raman/calculate_raman_prana_dasha_', methods=['POST'])
 def calculate_prana_dasha():
     """API endpoint to calculate Vimshottari Dasha."""
     try:

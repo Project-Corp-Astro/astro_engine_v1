@@ -1382,7 +1382,7 @@ def calculate_vimshottari_sookshma_dasha():
 
 # # Vimshottari Sookshma Dasha and Prana Dasha :
 
-@bp.route('/lahiri/calculate_sookshma_prana', methods=['POST'])
+@bp.route('/lahiri/calculate_sookshma_prana_dashas', methods=['POST'])
 def calculate_vimshottari_dasha():
     """API endpoint to calculate Vimshottari Dasha."""
     try:
