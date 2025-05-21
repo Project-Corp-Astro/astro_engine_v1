@@ -5,6 +5,7 @@ from venv import logger
 
 
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_antar_balance, calculate_mahadasha_periods, calculate_moon_sidereal_antar_position, get_julian_dasha_day, get_nakshatra_and_antar_lord
+from astro_engine.engine.dashas.LahiriPranDasha import calculate_dasha_balance_pran, calculate_moon_sidereal_position_prana, calculate_pranaDasha_periods, get_julian_day_pran, get_nakshatra_and_lord_prana
 from astro_engine.engine.dashas.Pratyantardashas import calculate_Pratythardasha_periods, calculate_moon_praty_sidereal_position, calculate_pratythar_dasha_balance, get_julian_pratyathar_day, get_nakshatra_party_and_lord
 from astro_engine.engine.dashas.Sookashama import calculate_moon_sookshma_sidereal_position, calculate_sookshma_dasha_balance, calculate_sookshma_dasha_periods, get_julian_sookshma_day, get_nakshatra_and_lord_sookshma
 from astro_engine.engine.divisionalCharts.ChathruthamshaD4 import  get_julian_day, lahairi_Chaturthamsha
@@ -1321,7 +1322,6 @@ def calculate_vimshottari_pratyantar_dasha():
 
 # # Vimshottari Pratyantardasha and Sookshma Dasha
 
-
 @bp.route('/lahiri/calculate_antar_pratyantar_sookshma_dasha', methods=['POST'])
 def calculate_vimshottari_sookshma_dasha():
     """
@@ -1380,51 +1380,50 @@ def calculate_vimshottari_sookshma_dasha():
 
 
 
+# # Vimshottari Sookshma Dasha and Prana Dasha :
+
+@bp.route('/lahiri/calculate_sookshma_prana', methods=['POST'])
+def calculate_vimshottari_dasha():
+    """API endpoint to calculate Vimshottari Dasha."""
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day for birth
+        jd_birth = get_julian_day_pran(birth_date, birth_time, tz_offset)
+        
+        # Calculate Moon's sidereal position
+        moon_longitude = calculate_moon_sidereal_position_prana(jd_birth)
+        
+        # Determine Nakshatra and lord
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_prana(moon_longitude)
+        
+        # Calculate dasha balance
+        remaining_days, mahadasha_duration_days, elapsed_days = calculate_dasha_balance_pran(moon_longitude, nakshatra_start, lord)
+        
+        # Calculate all Mahadasha periods
+        mahadasha_periods = calculate_pranaDasha_periods(jd_birth, lord, elapsed_days)
+
+        response = {
+            "user_name": data.get('user_name', 'Unknown'),
+            "nakshatra_at_birth": nakshatra,
+            "moon_longitude": round(moon_longitude, 4),
+            "mahadashas": mahadasha_periods
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 # Binnashtakavarga
-# @bp.route('/lahiri/calculate_binnashtakavarga', methods=['POST'])
-# def ashtakavarga_api_calculate_ashtakavarga():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No JSON data provided"}), 400
 
-#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-#         if not all(field in data for field in required_fields):
-#             return jsonify({"error": "Missing required fields"}), 400
-
-#         user_name = data.get('user_name', 'Unknown')
-#         birth_date = data['birth_date']
-#         birth_time = data['birth_time']
-#         latitude = float(data['latitude'])
-#         longitude = float(data['longitude'])
-#         tz_offset = float(data['timezone_offset'])
-
-#         jd = astro_binna_get_julian_day(birth_date, birth_time, tz_offset)
-#         asc_lon = astro_binna_calculate_ascendant(jd, latitude, longitude)
-#         asc_sign_index = astro_binna_get_sign_index(asc_lon)
-#         asc_sign = ZODIAC_SIGNS[asc_sign_index]
-#         positions = astro_utils_calculate_planet_positions(jd)
-#         positions['Ascendant'] = {'longitude': asc_lon, 'sign_index': asc_sign_index}
-#         bhinnashtakavarga = astro_utils_calculate_bhinnashtakavarga(positions)
-#         astro_utils_validate_totals(bhinnashtakavarga)
-
-#         bhinnashtakavarga_output = {
-#             target: {"signs": {ZODIAC_SIGNS[i]: bindus[i] for i in range(12)}, "total_bindus": sum(bindus)}
-#             for target, bindus in bhinnashtakavarga.items()
-#         }
-#         asc_degrees = astro_utils_format_dms(asc_lon % 30)
-
-#         response = {
-#             'user_name': user_name,
-#             'ascendant': {'degrees': asc_degrees, 'sign': asc_sign},
-#             'bhinnashtakavarga': bhinnashtakavarga_output,
-#             'metadata': {'ayanamsa': 'Lahiri', 'calculation_time': datetime.utcnow().isoformat(), 'input': data}
-#         }
-#         return jsonify(response), 200
-
-#     except Exception as e:
-#         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
 @bp.route('/lahiri/calculate_binnatakvarga', methods=['POST'])

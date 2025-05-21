@@ -26,6 +26,9 @@ http://localhost:5000/raman/calculate_arudha_lagna  (debug)
 http://localhost:5000/raman/calculate_sripathi_bhava
 http://localhost:5000/raman/calculate_kp_bhava      (vishun(rahu/kethu))
 http://localhost:5000/raman/calculate_equal_bhava_lagna
+http://localhost:5000/raman/calculate_bhinnashtakavarga
+
+http://localhost:5000/raman/calculate_maha_antar_dashas
 
 
 

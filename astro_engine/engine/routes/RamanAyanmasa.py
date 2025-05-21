@@ -5,6 +5,10 @@ import logging
 from venv import logger
 
 from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
+from astro_engine.engine.dashas.RamanAntarDasha import calculate_dasha_balance_raman_antar, calculate_mahadasha_periods_antar_raman, calculate_moon_sidereal_position_raman_antar, get_julian_day_antar_raman, get_nakshatra_and_lord_raman_antar
+from astro_engine.engine.dashas.RamanPranDasha import calculate_dasha_balance_pran_raman, calculate_moon_sidereal_position_pran_raman, calculate_pran_raman_periods, get_julian_day_pran_raman, get_nakshatra_and_lord_pran_raman
+from astro_engine.engine.dashas.RamanPratyantardashas import calculate_dasha_balance_prataythar_raman, calculate_moon_sidereal_position_prataythar_raman, calculate_prataythar_raman_periods, get_julian_day_prataythar_raman, get_nakshatra_and_lord_prataythar_raman
+from astro_engine.engine.dashas.RamanSookshmaDasha import calculate_moon_sidereal_sookshma_raman, calculate_sookshma_dasha_balance_raman, calculate_sookshma_raman_periods, get_julian_day_sookshma_raman, get_nakshatra_and_lord_soo_raman
 from astro_engine.engine.divisionalCharts.DreshkanaD3 import PLANET_NAMES, get_julian_day
 from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart, validate_input
 from astro_engine.engine.lagnaCharts.RamanArudha import raman_arudha_lagna
@@ -861,7 +865,7 @@ def calculate_arudha_lagna():
 
 
 # API Endpoint
-@rl.route('/calculate_ashtakvarga', methods=['POST'])
+@rl.route('/raman/calculate_bhinnashtakavarga', methods=['POST'])
 def calculate_ashtakvarga():
     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
     try:
@@ -905,3 +909,188 @@ def calculate_ashtakvarga():
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
+
+
+
+
+#**************************************************************************************************************
+#***********************************    Vimshottari Dashas       ***********************************************
+#**************************************************************************************************************
+
+
+
+#  Vimshottari of mahaDasha and antar dasha :
+
+@rl.route('/raman/calculate_maha_antar_dashas', methods=['POST'])
+def calculate_antardasha_dasha():
+    """Calculate Vimshottari Dasha based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        birth_datetime = datetime.strptime(f"{birth_date} {birth_time}", "%Y-%m-%d %H:%M:%S")
+        jd_birth = get_julian_day_antar_raman(birth_date, birth_time, tz_offset)
+        moon_longitude = calculate_moon_sidereal_position_raman_antar(jd_birth)
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_raman_antar(moon_longitude)
+        if not nakshatra:
+            return jsonify({"error": "Unable to determine Nakshatra"}), 500
+
+        balance_years, elapsed_years = calculate_dasha_balance_raman_antar(moon_longitude, nakshatra_start, lord)
+        mahadasha_periods = calculate_mahadasha_periods_antar_raman(birth_datetime, lord, balance_years, elapsed_years)
+
+        response = {
+            "user_name": user_name,
+            "birth_date": birth_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+            "nakshatra_at_birth": nakshatra,
+            "moon_longitude": round(moon_longitude, 4),
+            "mahadashas": mahadasha_periods
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
+#  Vimshottari of antar dasha and Pratyantardashas Dasha 
+
+
+@rl.route('/raman/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
+def calculate_prataytar_dasha():
+    """Calculate Vimshottari Dasha based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        jd_birth = get_julian_day_prataythar_raman(birth_date, birth_time, tz_offset)
+        moon_longitude = calculate_moon_sidereal_position_prataythar_raman(jd_birth)
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_prataythar_raman(moon_longitude)
+        if not nakshatra:
+            return jsonify({"error": "Unable to determine Nakshatra"}), 500
+
+        remaining_time, mahadasha_duration, elapsed_time = calculate_dasha_balance_prataythar_raman(moon_longitude, nakshatra_start, lord)
+        mahadasha_periods = calculate_prataythar_raman_periods(jd_birth, remaining_time, lord, elapsed_time)
+
+        response = {
+            "user_name": user_name,
+            "nakshatra_at_birth": nakshatra,
+            "moon_longitude": moon_longitude,
+            "mahadashas": mahadasha_periods
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
+
+
+
+@rl.route('/raman/calculate_sookshma_dasha_raman', methods=['POST'])
+def calculate_sookshmadasha_dasha():
+    """API endpoint to calculate Vimshottari Dasha periods."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        jd_birth = get_julian_day_sookshma_raman(birth_date, birth_time, tz_offset)
+        moon_longitude = calculate_moon_sidereal_sookshma_raman(jd_birth)
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_soo_raman(moon_longitude)
+        if not nakshatra:
+            return jsonify({"error": "Unable to determine Nakshatra"}), 500
+
+        remaining_time, mahadasha_duration, elapsed_time = calculate_sookshma_dasha_balance_raman(moon_longitude, nakshatra_start, lord)
+        mahadasha_periods = calculate_sookshma_raman_periods(jd_birth, lord, elapsed_time)
+
+        response = {
+            "user_name": user_name,
+            "nakshatra_at_birth": nakshatra,
+            "moon_longitude": round(moon_longitude, 4),
+            "mahadashas": mahadasha_periods
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
+
+@rl.route('/raman/calculate_raman_prana_dasha', methods=['POST'])
+def calculate_prana_dasha():
+    """API endpoint to calculate Vimshottari Dasha."""
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        tz_offset = float(data['timezone_offset'])
+
+        # Calculate Julian Day for birth
+        jd_birth = get_julian_day_pran_raman(birth_date, birth_time, tz_offset)
+        
+        # Calculate Moon's sidereal position
+        moon_longitude = calculate_moon_sidereal_position_pran_raman(jd_birth)
+        
+        # Determine Nakshatra and lord
+        nakshatra, lord, nakshatra_start = get_nakshatra_and_lord_pran_raman(moon_longitude)
+        
+        # Calculate dasha balance
+        remaining_days, mahadasha_duration_days, elapsed_days = calculate_dasha_balance_pran_raman(moon_longitude, nakshatra_start, lord)
+        
+        # Calculate all Mahadasha periods
+        mahadasha_periods = calculate_pran_raman_periods(jd_birth, lord, elapsed_days)
+
+        response = {
+            "user_name": data.get('user_name', 'Unknown'),
+            "nakshatra_at_birth": nakshatra,
+            "moon_longitude": round(moon_longitude, 4),
+            "mahadashas": mahadasha_periods
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
