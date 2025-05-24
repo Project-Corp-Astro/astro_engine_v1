@@ -4,6 +4,7 @@ import logging
 from venv import logger
 
 
+from astro_engine.engine.ashatakavargha.Sarvasthakavargha import lahiri_sarvathakavargha
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_antar_balance, calculate_mahadasha_periods, calculate_moon_sidereal_antar_position, get_julian_dasha_day, get_nakshatra_and_antar_lord
 from astro_engine.engine.dashas.LahiriPranDasha import calculate_dasha_balance_pran, calculate_moon_sidereal_position_prana, calculate_pranaDasha_periods, get_julian_day_pran, get_nakshatra_and_lord_prana
 from astro_engine.engine.dashas.Pratyantardashas import calculate_Pratythardasha_periods, calculate_moon_praty_sidereal_position, calculate_pratythar_dasha_balance, get_julian_pratyathar_day, get_nakshatra_party_and_lord
@@ -29,7 +30,7 @@ from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_s
 from astro_engine.engine.natalCharts.transit import  lahairi_tranist
 from astro_engine.engine.numerology.CompositeChart import  lahairi_composite
 from astro_engine.engine.numerology.LoShuGridNumerology import calculate_lo_shu_grid
-from astro_engine.engine.ashatakavargha.Binnastakavargha import  raman_bhinnashtakavarga
+from astro_engine.engine.ashatakavargha.Binnastakavargha import  lahiri_binnastakavargha
 from astro_engine.engine.numerology.NumerologyData import calculate_chaldean_numbers, calculate_date_numerology, get_sun_sign, get_element_from_number, get_sun_sign_element, get_elemental_compatibility, personal_interpretations, business_interpretations, ruling_planets, planet_insights, sun_sign_insights, number_colors, number_gemstones, planet_days
 from astro_engine.engine.divisionalCharts.AkshavedamshaD45 import  lahairi_Akshavedamsha
 from astro_engine.engine.divisionalCharts.ShashtiamshaD60 import  lahairi_Shashtiamsha
@@ -1427,23 +1428,16 @@ def calculate_vimshottari_dasha():
 
 
 @bp.route('/lahiri/calculate_binnatakvarga', methods=['POST'])
-def calculate_ashtakvarga():
-    """API endpoint to calculate Bhinnashtakavarga based on birth details."""
+def calculate_lahiri_binnashtakvarga():
     try:
-        # Get JSON data from request
         data = request.get_json()
         if not data:
-            logger.error("No JSON data provided in request")
             return jsonify({"error": "No JSON data provided"}), 400
 
-        # Validate required fields
         required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(key in data for key in required):
-            missing = [key for key in required if key not in data]
-            logger.error(f"Missing required parameters: {missing}")
-            return jsonify({"error": f"Missing required parameters: {missing}"}), 400
+            return jsonify({"error": "Missing required parameters"}), 400
 
-        # Extract and validate input data
         user_name = data['user_name']
         birth_date = data['birth_date']
         birth_time = data['birth_time']
@@ -1452,18 +1446,12 @@ def calculate_ashtakvarga():
         tz_offset = float(data['timezone_offset'])
 
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-            logger.error(f"Invalid coordinates: latitude={latitude}, longitude={longitude}")
             return jsonify({"error": "Invalid latitude or longitude"}), 400
 
-        # Calculate astrological data
-        result = raman_bhinnashtakavarga(birth_date, birth_time, latitude, longitude, tz_offset)
-        
-        # Ensure planetary_positions exists in result
-        if 'planetary_positions' not in result or not result['planetary_positions']:
-            logger.error("planetary_positions missing or empty in calculation result")
-            return jsonify({"error": "Failed to calculate planetary positions"}), 500
+        # Call the calculation function
+        results = lahiri_binnastakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
 
-        # Construct response
+        # Construct JSON response
         response = {
             "user_name": user_name,
             "birth_details": {
@@ -1473,25 +1461,73 @@ def calculate_ashtakvarga():
                 "longitude": longitude,
                 "timezone_offset": tz_offset
             },
-            "planetary_positions": result["planetary_positions"],
-            "ascendant": result["ascendant"],
-            "bhinnashtakavarga": result["bhinnashtakavarga"],
-            "notes": {
-                "ayanamsa": "Raman",
-                "ayanamsa_value": f"{result['ayanamsa']:.6f}",
-                "chart_type": "Rasi",
-                "house_system": "Whole Sign"
-            }
+            "planetary_positions": results["planetary_positions"],
+            "ascendant": results["ascendant"],
+            "ashtakvarga": results["ashtakvarga"],
+            "notes": results["notes"]
         }
-        logger.info("Successfully calculated Bhinnashtakavarga")
         return jsonify(response), 200
 
     except ValueError as ve:
-        logger.error(f"ValueError occurred: {str(ve)}")
-        return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
+#  Sarvathakavargha 
+@bp.route('/lahiri/calculate_sarvashtakavarga', methods=['POST'])
+def calculate_sarvashtakavarga_endpoint():
+    """API endpoint to calculate Sarvashtakvarga with matrix table based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return jsonify({"error": "Invalid latitude or longitude"}), 400
+
+        # Call the calculation function
+        results = lahiri_sarvathakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct JSON response
+        response = {
+            "user_name": user_name,
+            "birth_details": {
+                "birth_date": birth_date,
+                "birth_time": birth_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": tz_offset
+            },
+            "planetary_positions": results["planetary_positions"],
+            "ascendant": results["ascendant"],
+            "bhinnashtakavarga": results["bhinnashtakavarga"],
+            "sarvashtakavarga": results["sarvashtakavarga"],
+            "notes": {
+                "ayanamsa": "Lahiri",
+                "ayanamsa_value": f"{results['ayanamsa']:.6f}",
+                "chart_type": "Rasi",
+                "house_system": "Whole Sign"
+            },
+            "debug": {
+                "julian_day": results["julian_day"],
+                "ayanamsa": f"{results['ayanamsa']:.6f}"
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Error: {str(e)}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 

@@ -7,6 +7,7 @@ http://localhost:5000/raman/transit
 http://localhost:5000/raman/calculate_moon_chart
 http://localhost:5000/raman/calculate_sun_chart
 http://localhost:5000/raman/calculate_sripathi_bhava
+http://localhost:5000/raman/calculate_sudarshan_chakra
 
 http://localhost:5000/raman/calculate_d2_hora
 http://localhost:5000/raman/calculate_d3_chart
@@ -27,6 +28,8 @@ http://localhost:5000/raman/calculate_sripathi_bhava
 http://localhost:5000/raman/calculate_kp_bhava      (vishun(rahu/kethu))
 http://localhost:5000/raman/calculate_equal_bhava_lagna
 http://localhost:5000/raman/calculate_bhinnashtakavarga
+http://localhost:5000/raman/calculate_sarvashtakavarga
+
 
 http://localhost:5000/raman/calculate_maha_antar_dashas
 http://localhost:5000/raman/calculate_maha_antar_pratyantar_dasha
@@ -74,3 +77,4 @@ http://localhost:5000/lahiri/calculate_antar_pratyantar_sookshma_dasha
 http://localhost:5000/lahiri/calculate_sookshma_prana_dashas
 
 http://localhost:5000/lahiri/calculate_binnatakvarga
+http://localhost:5000/lahiri/calculate_sarvashtakavarga

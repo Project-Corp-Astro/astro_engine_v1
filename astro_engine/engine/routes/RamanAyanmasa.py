@@ -5,6 +5,7 @@ import logging
 from venv import logger
 
 from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
+from astro_engine.engine.ashatakavargha.RamanSarvastakavargha import raman_sarvathakavargha
 from astro_engine.engine.dashas.RamanAntarDasha import calculate_dasha_balance_raman_antar, calculate_mahadasha_periods_antar_raman, calculate_moon_sidereal_position_raman_antar, get_julian_day_antar_raman, get_nakshatra_and_lord_raman_antar
 from astro_engine.engine.dashas.RamanPranDasha import calculate_dasha_balance_pran_raman, calculate_moon_sidereal_position_pran_raman, calculate_pran_raman_periods, get_julian_day_pran_raman, get_nakshatra_and_lord_pran_raman
 from astro_engine.engine.dashas.RamanPratyantardashas import calculate_dasha_balance_prataythar_raman, calculate_moon_sidereal_position_prataythar_raman, calculate_prataythar_raman_periods, get_julian_day_prataythar_raman, get_nakshatra_and_lord_prataythar_raman
@@ -866,8 +867,7 @@ def calculate_arudha_lagna():
 
 # API Endpoint
 @rl.route('/raman/calculate_bhinnashtakavarga', methods=['POST'])
-def calculate_ashtakvarga():
-    """API endpoint to calculate Bhinnashtakavarga based on birth details."""
+def calculate_raman_ashtakvarga():
     try:
         data = request.get_json()
         if not data:
@@ -888,9 +888,9 @@ def calculate_ashtakvarga():
             return jsonify({"error": "Invalid latitude or longitude"}), 400
 
         # Call the calculation function
-        calculation_result = raman_binnastakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
+        results = raman_binnastakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
 
-        # Construct the response
+        # Construct JSON response
         response = {
             "user_name": user_name,
             "birth_details": {
@@ -900,7 +900,10 @@ def calculate_ashtakvarga():
                 "longitude": longitude,
                 "timezone_offset": tz_offset
             },
-            **calculation_result
+            "planetary_positions": results["planetary_positions"],
+            "ascendant": results["ascendant"],
+            "ashtakvarga": results["ashtakvarga"],
+            "notes": results["notes"]
         }
         return jsonify(response), 200
 
@@ -909,6 +912,63 @@ def calculate_ashtakvarga():
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
+
+#  Sarvashakavargha 
+@rl.route('/raman/calculate_sarvashtakavarga', methods=['POST'])
+def calculate_sarvashtakavarga_endpoint():
+    """API endpoint to calculate Sarvashtakvarga with matrix table based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required):
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        user_name = data['user_name']
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+            return jsonify({"error": "Invalid latitude or longitude"}), 400
+
+        # Call the calculation function
+        results = raman_sarvathakavargha(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct JSON response
+        response = {
+            "user_name": user_name,
+            "birth_details": {
+                "birth_date": birth_date,
+                "birth_time": birth_time,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone_offset": tz_offset
+            },
+            "planetary_positions": results["planetary_positions"],
+            "ascendant": results["ascendant"],
+            "bhinnashtakavarga": results["bhinnashtakavarga"],
+            "sarvashtakavarga": results["sarvashtakavarga"],
+            "notes": {
+                "ayanamsa": "Lahiri",
+                "ayanamsa_value": f"{results['ayanamsa']:.6f}",
+                "chart_type": "Rasi",
+                "house_system": "Whole Sign"
+            },
+            "debug": {
+                "julian_day": results["julian_day"],
+                "ayanamsa": f"{results['ayanamsa']:.6f}"
+            }
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Error: {str(e)}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
 
@@ -1057,7 +1117,7 @@ def calculate_sookshmadasha_dasha():
 
 
 # Vimshottari of  Prana dasha with all dash sequence.
-@rl.route('/raman/calculate_raman_prana_dasha_', methods=['POST'])
+@rl.route('/raman/calculate_raman_prana_dasha', methods=['POST'])
 def calculate_prana_dasha():
     """API endpoint to calculate Vimshottari Dasha."""
     try:
