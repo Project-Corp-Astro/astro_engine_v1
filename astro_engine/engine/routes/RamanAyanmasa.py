@@ -15,6 +15,8 @@ from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart, validate
 from astro_engine.engine.lagnaCharts.RamanArudha import raman_arudha_lagna
 from astro_engine.engine.lagnaCharts.RamanBavaLagna import raman_bava_lagna
 from astro_engine.engine.lagnaCharts.RamanEqualBava import raman_equal_bava_lagnas
+from astro_engine.engine.lagnaCharts.RamanKarkamshaD1 import raman_karkamsha_D1
+from astro_engine.engine.lagnaCharts.RamanKarkamshaD9 import raman_karkamsha_D9
 from astro_engine.engine.lagnaCharts.RamanKpLagna import raman_kp_bava
 from astro_engine.engine.lagnaCharts.RamanSripathi import raman_sripathi_bava
 from astro_engine.engine.lagnaCharts.SunRaman import  raman_sun_chart, validate_input_sun
@@ -827,45 +829,87 @@ def calculate_arudha_lagna():
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
+#  Karkamsha Birth chart 
+@rl.route('/raman/calculate_karkamsha_d1', methods=['POST'])
+def calculate_d1_karkamsha_endpoint():
+    """API endpoint to calculate the D1 Karkamsha chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
-# #  Binnastakavargha 
-# @rl.route('/raman/calculate_binnashtakvarga', methods=['POST'])
-# def calculate_ashtakvarga():
-#     """API endpoint to calculate Bhinnashtakavarga based on birth details."""
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No JSON data provided"}), 400
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
 
-#         required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-#         if not all(key in data for key in required):
-#             return jsonify({"error": "Missing required parameters"}), 400
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
 
-#         user_name = data['user_name']
-#         birth_date = data['birth_date']
-#         birth_time = data['birth_time']
-#         latitude = float(data['latitude'])
-#         longitude = float(data['longitude'])
-#         tz_offset = float(data['timezone_offset'])
+        # Call the calculation function
+        results = raman_karkamsha_D1(birth_date, birth_time, latitude, longitude, tz_offset)
 
-#         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-#             return jsonify({"error": "Invalid latitude or longitude"}), 400
+        # Construct response
+        response = {
+            "user_name": user_name,
+            **results
+        }
+        return jsonify(response), 200
 
-#         # Call the calculation function
-#         response = raman_binnastakavargha(user_name, birth_date, birth_time, latitude, longitude, tz_offset)
-#         return jsonify(response), 200
-
-#     except ValueError as ve:
-#         return jsonify({"error": str(ve)}), 400
-#     except Exception as e:
-#         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
-
-
-
-
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-# API Endpoint
+
+#  Karkamsha D9 chart 
+@rl.route('/raman/calculate_d9_karkamsha', methods=['POST'])
+def calculate_karkamsha_endpoint():
+    """API endpoint to calculate the Karkamsha chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        results = raman_karkamsha_D9(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct response
+        response = {
+            "user_name": user_name,
+            **results
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+
+
+#**************************************************************************************************************
+#***********************************    Ashatakavargha Raman       ***********************************************
+#**************************************************************************************************************
+
+
+# Binnastakavargha
 @rl.route('/raman/calculate_bhinnashtakavarga', methods=['POST'])
 def calculate_raman_ashtakvarga():
     try:

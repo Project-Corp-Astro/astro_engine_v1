@@ -25,6 +25,8 @@ from astro_engine.engine.lagnaCharts.ArudhaLagna import lahairi_arudha_lagna
 from astro_engine.engine.lagnaCharts.BavaLagna import  lahairi_bava_lagan
 from astro_engine.engine.lagnaCharts.EqualLagan import SIGNS,  lahairi_equal_bava
 from astro_engine.engine.lagnaCharts.KPLagna import  lahairi_kp_bava
+from astro_engine.engine.lagnaCharts.LahiriKarkamshaD1 import lahiri_karkamsha_d1
+from astro_engine.engine.lagnaCharts.LahiriKarkamshaD9 import lahiri_karkamsha_D9
 from astro_engine.engine.lagnaCharts.Sripathi import lahairi_sripathi_bava
 from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_sign,     format_dms
 from astro_engine.engine.natalCharts.transit import  lahairi_tranist
@@ -949,6 +951,83 @@ def calculate_arudha_lagna():
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
+# Karkamsha Birth chart 
+
+@bp.route('/lahiri/calculate_d1_karkamsha', methods=['POST'])
+def calculate_d1_karkamsha_endpoint():
+    """Calculate the D1 Karkamsha chart based on birth details."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        results = lahiri_karkamsha_d1(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct response
+        response = {
+            "user_name": user_name,
+            "d1_ascendant": results['d1_ascendant'],
+            "atmakaraka": results['atmakaraka'],
+            "karkamsha_ascendant": results['karkamsha_ascendant'],
+            "d1_karkamsha_chart": results['d1_karkamsha_chart']
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+#  KarKamsha D9 Chart 
+@bp.route('/calculate_karkamsha_d9', methods=['POST'])
+def calculate_karkamsha_endpoint():
+    """API endpoint to calculate the Karkamsha chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        # Call the calculation function
+        results = lahiri_karkamsha_D9(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        # Construct response
+        response = {
+            "user_name": user_name,
+            "atmakaraka": results['atmakaraka'],
+            "karkamsha_sign": results['karkamsha_sign'],
+            "karkamsha_chart": results['karkamsha_chart']
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 
 # Synastry
@@ -1424,8 +1503,6 @@ def calculate_vimshottari_dasha():
 
 
 # Binnashtakavarga
-
-
 
 @bp.route('/lahiri/calculate_binnatakvarga', methods=['POST'])
 def calculate_lahiri_binnashtakvarga():

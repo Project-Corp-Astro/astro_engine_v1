@@ -27,6 +27,10 @@ http://localhost:5000/raman/calculate_arudha_lagna  (debug)
 http://localhost:5000/raman/calculate_sripathi_bhava
 http://localhost:5000/raman/calculate_kp_bhava      (vishun(rahu/kethu))
 http://localhost:5000/raman/calculate_equal_bhava_lagna
+http://localhost:5000/raman/calculate_karkamsha_d1
+http://localhost:5000/raman/calculate_d9_karkamsha
+
+
 http://localhost:5000/raman/calculate_bhinnashtakavarga
 http://localhost:5000/raman/calculate_sarvashtakavarga
 
@@ -65,6 +69,9 @@ http://localhost:5000/lahiri/calculate_arudha_lagna
 http://localhost:5000/lahiri/calculate_sripathi_bhava
 http://localhost:5000/lahiri/calculate_kp_bhava
 http://localhost:5000/lahiri/calculate_equal_bhava_lagna
+http://localhost:5000/lahiri/calculate_d1_karkamsha
+http://localhost:5000/lahiri/calculate_karkamsha_d9
+
 http://localhost:5000/lahiri/synastry
 http://localhost:5000/lahiri/composite 
 http://localhost:5000/lahiri/progressed
