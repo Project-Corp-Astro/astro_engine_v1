@@ -4,6 +4,10 @@ from datetime import datetime
 import logging
 from venv import logger
 
+from astro_engine.engine.dashas.KpAntar import calculate_maha_antar_dasha
+from astro_engine.engine.dashas.KpPran import calculate_maha_antar_pratyantar_pran_dasha
+from astro_engine.engine.dashas.KpPratyantar import calculate_maha_antar_pratyantar_dasha
+from astro_engine.engine.dashas.KpSookshma import calculate_maha_antar_pratyantar_sooksha_dashas
 from astro_engine.engine.kpSystem.charts.BhavaHouses import calculate_bhava_houses_details
 from astro_engine.engine.kpSystem.charts.CupsalChart import ZODIAC_SIGNS, cupsal_assign_nakshatra_and_lords, cupsal_assign_planet_to_house, cupsal_calculate_ascendant_and_cusps, cupsal_calculate_kp_new_ayanamsa, cupsal_calculate_planet_positions, cupsal_calculate_significators, cupsal_format_dms, cupsal_get_julian_day
 from astro_engine.engine.kpSystem.charts.RulingPlanets import ruling_calculate_ascendant_and_cusps, ruling_calculate_balance_of_dasha, ruling_calculate_fortuna, ruling_calculate_jd, ruling_calculate_planet_positions, ruling_check_rahu_ketu, ruling_compile_core_rp, ruling_get_day_lord, ruling_get_details
@@ -190,3 +194,69 @@ def calculate_significations():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
+
+
+
+
+#  Antar Dasha :
+@kp.route('/calculate_maha_antar_dasha', methods=['POST'])
+def calculate_maha_antar_dasha_api():
+    try:
+        data = request.get_json()
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+        response = calculate_maha_antar_dasha(data)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+#  Pratynatar Dasha 
+@kp.route('/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
+def calculate_maha_antar_pratyantar_dasha_api():
+    """API endpoint to calculate Vimshottari Dasha periods."""
+    try:
+        data = request.get_json()
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+        response = calculate_maha_antar_pratyantar_dasha(data)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+#  Sookshma Dasha 
+
+@kp.route('/calculate_maha_antar_pratyantar_sooksha_dasha', methods=['POST'])
+def calculate_maha_antar_pratyantar_sookshma_dasha():
+    """API endpoint to calculate Vimshottari Dasha periods including Sookshma Dasha."""
+    try:
+        data = request.get_json()
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+        response = calculate_maha_antar_pratyantar_sooksha_dashas(data)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#  Prana Dasha :
+@kp.route('/calculate_maha_antar_pratyantar_pran_dasha', methods=['POST'])
+def calculate_maha_antar_pratyantar_dasha_pran():
+    """API endpoint to calculate Vimshottari Dasha periods including Sookshma and Pran Dasha."""
+    try:
+        data = request.get_json()
+        required_fields = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(key in data for key in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+        response = calculate_maha_antar_pratyantar_pran_dasha(data)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+

@@ -2,10 +2,11 @@ import swisseph as swe
 from datetime import datetime, timedelta
 import math
 
-# Constants
+# Zodiac signs
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 
          'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
 
+# D30 mapping ranges for odd signs
 ODD_SIGN_D30_RANGES = [
     (0, 5, 'Aries'),
     (5, 10, 'Aquarius'),
@@ -14,6 +15,7 @@ ODD_SIGN_D30_RANGES = [
     (25, 30, 'Libra')
 ]
 
+# D30 mapping ranges for even signs
 EVEN_SIGN_D30_RANGES = [
     (0, 5, 'Taurus'),
     (5, 12, 'Virgo'),
@@ -22,6 +24,7 @@ EVEN_SIGN_D30_RANGES = [
     (25, 30, 'Scorpio')
 ]
 
+# Nakshatra details: (name, start degree)
 NAKSHATRAS = [
     ("Ashwini", 0),
     ("Bharani", 13.333),
@@ -67,9 +70,14 @@ def get_julian_day(date_str, time_str, tz_offset):
 
 def calculate_sidereal_longitudes(jd, latitude, longitude):
     """Calculate sidereal longitudes using Lahiri Ayanamsa."""
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    swe.set_sid_mode(swe.SIDM_RAMAN)
+    planets = {
+        'Sun': swe.SUN, 'Moon': swe.MOON, 'Mercury': swe.MERCURY, 'Venus': swe.VENUS,
+        'Mars': swe.MARS, 'Jupiter': swe.JUPITER, 'Saturn': swe.SATURN,
+        'Rahu': swe.MEAN_NODE, 'Ketu': None
+    }
     positions = {}
-    for planet, code in PLANETS.items():
+    for planet, code in planets.items():
         if planet == 'Ketu':
             rahu_lon = positions['Rahu']['longitude']
             positions['Ketu'] = {'longitude': (rahu_lon + 180) % 360}
@@ -126,31 +134,31 @@ def get_nakshatra_and_pada(longitude):
         end = start + 13.333 if i < 26 else 360
         if start <= longitude < end:
             offset = longitude - start
-            pada = math.ceil(offset / (13.333 / 4))
+            pada = 1 + math.floor(offset / 3.333)
             return name, pada
     return "Unknown", 0
 
 def calculate_natal_positions(jd, latitude, longitude):
     """Calculate natal positions with additional details."""
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    swe.set_sid_mode(swe.SIDM_RAMAN)
     positions = {}
     for planet, code in PLANETS.items():
         if planet == 'Ketu':
             rahu_lon = positions['Rahu']['longitude']
             ketu_lon = (rahu_lon + 180) % 360
-            retrograde = True
             sign, degree = get_sign_and_degree(ketu_lon)
             nakshatra, pada = get_nakshatra_and_pada(ketu_lon)
             positions['Ketu'] = {
                 'longitude': ketu_lon,
-                'retrograde': retrograde,
                 'sign': sign,
                 'degree': degree,
                 'nakshatra': nakshatra,
-                'pada': pada
+                'pada': pada,
+                'retrograde': True  # Ketu is always retrograde
             }
         else:
-            pos = swe.calc_ut(jd, code, swe.FLG_SIDEREAL | swe.FLG_SPEED)
+            flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
+            pos = swe.calc_ut(jd, code, flags)
             lon = pos[0][0] % 360
             speed = pos[0][3]
             retrograde = speed < 0 if planet not in ['Sun', 'Moon'] else False
@@ -158,11 +166,11 @@ def calculate_natal_positions(jd, latitude, longitude):
             nakshatra, pada = get_nakshatra_and_pada(lon)
             positions[planet] = {
                 'longitude': lon,
-                'retrograde': retrograde,
                 'sign': sign,
                 'degree': degree,
                 'nakshatra': nakshatra,
-                'pada': pada
+                'pada': pada,
+                'retrograde': retrograde
             }
     cusps, ascmc = swe.houses_ex(jd, float(latitude), float(longitude), b'W', flags=swe.FLG_SIDEREAL)
     asc_lon = ascmc[0] % 360
@@ -173,27 +181,28 @@ def calculate_natal_positions(jd, latitude, longitude):
         'sign': sign,
         'degree': degree,
         'nakshatra': nakshatra,
-        'pada': pada
+        'pada': pada,
+        'retrograde': None  # Ascendant doesn't have retrograde status
     }
     return positions
 
-def lahiri_trimshamsha_D30(birth_date, birth_time, latitude, longitude, tz_offset):
-    """Calculate D30 chart with natal details including pada, stars, and retrograde."""
+def raman_trimshamsha_D30(birth_date, birth_time, latitude, longitude, tz_offset):
+    """Calculate D30 chart with pada, stars, and retrograde status."""
     jd = get_julian_day(birth_date, birth_time, tz_offset)
     natal_positions = calculate_natal_positions(jd, latitude, longitude)
     d30_positions = {}
     for planet, data in natal_positions.items():
         longitude = data['longitude']
-        sign, degree, natal_sign, natal_deg = get_d30_sign_and_degree(longitude)
+        d30_sign, d30_degree, natal_sign, natal_deg = get_d30_sign_and_degree(longitude)
         d30_positions[planet] = {
-            'sign': sign,
-            'degree': format_degree(degree),
+            'sign': d30_sign,
+            'degree': format_degree(d30_degree),
             'natal_sign': natal_sign,
             'natal_degree': format_degree(natal_deg),
             'natal_longitude': round(longitude, 4),
-            'retrograde': data.get('retrograde', None),
             'nakshatra': data['nakshatra'],
-            'pada': data['pada']
+            'pada': data['pada'],
+            'retrograde': data['retrograde']
         }
     ascendant_sign = d30_positions['Ascendant']['sign']
     assign_houses(d30_positions, ascendant_sign)

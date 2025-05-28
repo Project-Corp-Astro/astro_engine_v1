@@ -35,6 +35,7 @@ from astro_engine.engine.ramanDivisionals.NavamsaD9 import raman_navamsa_D9
 from astro_engine.engine.ramanDivisionals.SaptamshaD7 import raman_saptamsha
 from astro_engine.engine.ramanDivisionals.ShashtiamshaD60 import raman_Shashtiamsha_D60
 from astro_engine.engine.ramanDivisionals.ShodashamshaD16 import raman_Shodashamsha_D16
+from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_trimshamsha_D30
 from astro_engine.engine.ramanDivisionals.VimshamshaD20 import raman_Vimshamsha_D20
 
 
@@ -585,6 +586,40 @@ def calculate_d24():
         tz_offset = float(data['timezone_offset'])
         result = raman_Chaturvimshamsha_D24(birth_date, birth_time, latitude, longitude, tz_offset)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+#  Trimshamsha D30 
+@rl.route('/calculate_d30_chart', methods=['POST'])
+def calculate_d30_chart():
+    """API endpoint to calculate D30 chart."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = data['latitude']
+        longitude = data['longitude']
+        tz_offset = float(data['timezone_offset'])
+
+        natal_positions, d30_positions = raman_trimshamsha_D30(birth_date, birth_time, latitude, longitude, tz_offset)
+
+        response = {
+            "user_name": data.get('user_name', 'Unknown'),
+            "natal_positions": {p: natal_positions[p]['longitude'] for p in natal_positions},
+            "d30_chart": d30_positions
+        }
+        return jsonify(response), 200
+
+    except ValueError as ve:
+        return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
