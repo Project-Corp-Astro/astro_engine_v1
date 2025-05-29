@@ -85,3 +85,19 @@ http://localhost:5000/lahiri/calculate_sookshma_prana_dashas
 
 http://localhost:5000/lahiri/calculate_binnatakvarga
 http://localhost:5000/lahiri/calculate_sarvashtakavarga
+
+
+
+Kp Systems :
+
+http://localhost:5000/kp/calculate_kp_planets_cusps
+http://localhost:5000/kp/calculate_ruling_planets
+http://localhost:5000/kp/calculate_bhava_details
+http://localhost:5000/kp/calculate_significations
+http://localhost:5000/kp/calculate_maha_antar_dasha
+http://localhost:5000/kp/calculate_maha_antar_pratyantar_dasha
+http://localhost:5000/kp/calculate_maha_antar_pratyantar_sooksha_dasha
+http://localhost:5000/kp/calculate_maha_antar_pratyantar_pran_dasha
+
+
+

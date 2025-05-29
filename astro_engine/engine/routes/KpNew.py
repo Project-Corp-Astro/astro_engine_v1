@@ -21,7 +21,7 @@ kp = Blueprint('kp_routes', __name__)
 
 
 # KP Planets and Cusps
-@kp.route('/calculate_kp_planets_cusps', methods=['POST'])
+@kp.route('/kp/calculate_kp_planets_cusps', methods=['POST'])
 def calculate_kp_planets_cusps():
     try:
         data = request.get_json()
@@ -87,7 +87,7 @@ def calculate_kp_planets_cusps():
 
 
 # Ruling Planets
-@kp.route('/calculate_ruling_planets', methods=['POST'])
+@kp.route('/kp/calculate_ruling_planets', methods=['POST'])
 def calculate_ruling_planets():
     try:
         data = request.get_json()
@@ -133,7 +133,7 @@ def calculate_ruling_planets():
 
 
 # Bhava Details
-@kp.route('/calculate_bhava_details', methods=['POST'])
+@kp.route('/kp/calculate_bhava_details', methods=['POST'])
 def calculate_bhava_details():
     try:
         data = request.get_json()
@@ -167,7 +167,7 @@ def calculate_bhava_details():
 
 
 # House Significations
-@kp.route('/calculate_significations', methods=['POST'])
+@kp.route('/kp/calculate_significations', methods=['POST'])
 def calculate_significations():
     try:
         data = request.get_json()
@@ -200,7 +200,7 @@ def calculate_significations():
 
 
 #  Antar Dasha :
-@kp.route('/calculate_maha_antar_dasha', methods=['POST'])
+@kp.route('/kp/calculate_maha_antar_dasha', methods=['POST'])
 def calculate_maha_antar_dasha_api():
     try:
         data = request.get_json()
@@ -215,7 +215,7 @@ def calculate_maha_antar_dasha_api():
 
 
 #  Pratynatar Dasha 
-@kp.route('/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
+@kp.route('/kp/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
 def calculate_maha_antar_pratyantar_dasha_api():
     """API endpoint to calculate Vimshottari Dasha periods."""
     try:
@@ -232,7 +232,7 @@ def calculate_maha_antar_pratyantar_dasha_api():
 
 #  Sookshma Dasha 
 
-@kp.route('/calculate_maha_antar_pratyantar_sooksha_dasha', methods=['POST'])
+@kp.route('/kp/calculate_maha_antar_pratyantar_sooksha_dasha', methods=['POST'])
 def calculate_maha_antar_pratyantar_sookshma_dasha():
     """API endpoint to calculate Vimshottari Dasha periods including Sookshma Dasha."""
     try:
@@ -247,7 +247,7 @@ def calculate_maha_antar_pratyantar_sookshma_dasha():
 
 
 #  Prana Dasha :
-@kp.route('/calculate_maha_antar_pratyantar_pran_dasha', methods=['POST'])
+@kp.route('/kp/calculate_maha_antar_pratyantar_pran_dasha', methods=['POST'])
 def calculate_maha_antar_pratyantar_dasha_pran():
     """API endpoint to calculate Vimshottari Dasha periods including Sookshma and Pran Dasha."""
     try:
