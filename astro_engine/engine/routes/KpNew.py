@@ -4,6 +4,7 @@ from datetime import datetime
 import logging
 from venv import logger
 
+from astro_engine.engine.ashatakavargha.KpShodashVargha import CHARTS_kp, SIGNS_kp, get_sidereal_asc_kp, get_sidereal_positions_kp, julian_day_kp, local_to_utc_kp, varga_sign_kp
 from astro_engine.engine.dashas.KpAntar import calculate_maha_antar_dasha
 from astro_engine.engine.dashas.KpPran import calculate_maha_antar_pratyantar_pran_dasha
 from astro_engine.engine.dashas.KpPratyantar import calculate_maha_antar_pratyantar_dasha
@@ -198,6 +199,9 @@ def calculate_significations():
 
 
 
+#**************************************************************************************************************
+#***********************************    Vimshottari Dashas       ***********************************************
+#**************************************************************************************************************
 
 #  Antar Dasha :
 @kp.route('/kp/calculate_maha_antar_dasha', methods=['POST'])
@@ -257,6 +261,53 @@ def calculate_maha_antar_pratyantar_dasha_pran():
             return jsonify({"error": "Missing required fields"}), 400
         response = calculate_maha_antar_pratyantar_pran_dasha(data)
         return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+#**************************************************************************************************************
+#***********************************    Shodamsha Summary       ***********************************************
+#**************************************************************************************************************
+
+@kp.route('/kp/shodasha_varga_signs', methods=['POST'])
+def shodasha_varga_signs():
+    try:
+        data = request.get_json()
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+
+        utc_dt = local_to_utc_kp(birth_date, birth_time, timezone_offset)
+        jd = julian_day_kp(utc_dt)
+
+        # Sidereal positions of all planets
+        sid_positions = get_sidereal_positions_kp(jd)
+        sid_asc, asc_sign_idx, asc_deg_in_sign = get_sidereal_asc_kp(jd, latitude, longitude)
+        sid_positions['Ascendant'] = (sid_asc, asc_sign_idx, asc_deg_in_sign)
+
+        summary = {}
+        for pname in sid_positions.keys():
+            summary[pname] = {}
+
+        for chart in CHARTS_kp:
+            for pname, (lon, sign_idx, deg_in_sign) in sid_positions.items():
+                varga_idx = varga_sign_kp(sign_idx, deg_in_sign, chart)
+                summary[pname][chart] = {"sign": SIGNS_kp[varga_idx]}
+
+        return jsonify({
+            "ayanamsa": "KP New",
+            "house_system": "Placidus",
+            "shodasha_varga_signs": summary,
+            "user_name": user_name
+        }), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

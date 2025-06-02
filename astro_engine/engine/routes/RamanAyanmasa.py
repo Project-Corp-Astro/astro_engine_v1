@@ -3,6 +3,15 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import logging
 from venv import logger
+import swisseph as swe
+
+from astro_engine.engine.ashatakavargha.RamanVarghaSigns import CHARTS, SIGNS, raman_sign_get_sidereal_asc, raman_sign_get_sidereal_positions, raman_sign_julian_day, raman_sign_local_to_utc, raman_sign_varga_sign
+from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_d30_assign_houses, raman_d30_calculate_sidereal_longitudes, raman_d30_format_degree, raman_d30_get_d30_sign_and_degree, raman_d30_get_julian_day, raman_d30_get_nakshatra_and_pada
+
+
+
+
+swe.set_ephe_path('astro_api/ephe')
 
 from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
 from astro_engine.engine.ashatakavargha.RamanSarvastakavargha import raman_sarvathakavargha
@@ -33,9 +42,9 @@ from astro_engine.engine.ramanDivisionals.HoraD2 import raman_hora_chart
 from astro_engine.engine.ramanDivisionals.KhavedamshaD40 import raman_Khavedamsha_D40
 from astro_engine.engine.ramanDivisionals.NavamsaD9 import raman_navamsa_D9
 from astro_engine.engine.ramanDivisionals.SaptamshaD7 import raman_saptamsha
+from astro_engine.engine.ramanDivisionals.SaptavimshamshaD27 import PLANET_CODES, ZODIAC_SIGNS_raman, raman_d27_calculate_ascendant, raman_d27_calculate_d27_longitude, raman_d27_calculate_house, raman_d27_calculate_sidereal_longitude, raman_d27_get_julian_day_utc, raman_d27_get_nakshatra_pada, raman_d27_get_sign_index
 from astro_engine.engine.ramanDivisionals.ShashtiamshaD60 import raman_Shashtiamsha_D60
 from astro_engine.engine.ramanDivisionals.ShodashamshaD16 import raman_Shodashamsha_D16
-from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_trimshamsha_D30
 from astro_engine.engine.ramanDivisionals.VimshamshaD20 import raman_Vimshamsha_D20
 
 
@@ -590,15 +599,118 @@ def calculate_d24():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
+
+#  Saptavimshamsha D27
+@rl.route('/raman/calculate_d27_chart', methods=['POST'])
+def calculate_d27_chart():
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        jd_utc = raman_d27_get_julian_day_utc(birth_date, birth_time, tz_offset)
+        natal_asc_lon = raman_d27_calculate_ascendant(jd_utc, latitude, longitude)
+        d27_asc_lon = raman_d27_calculate_d27_longitude(natal_asc_lon)
+        d27_asc_sign_index = raman_d27_get_sign_index(d27_asc_lon)
+        d27_asc_deg = d27_asc_lon % 30
+
+        natal_planet_lons = {}
+        natal_planet_retro = {}
+
+        # Rahu/Ketu
+        natal_rahu_lon, _ = raman_d27_calculate_sidereal_longitude(jd_utc, swe.MEAN_NODE)
+        natal_ketu_lon = (natal_rahu_lon + 180) % 360
+        natal_planet_lons["Rahu"] = natal_rahu_lon
+        natal_planet_lons["Ketu"] = natal_ketu_lon
+        natal_planet_retro["Rahu"] = True
+        natal_planet_retro["Ketu"] = True
+
+        for planet, code in PLANET_CODES.items():
+            if planet == "Rahu":
+                continue  # Already handled
+            lon, retro = raman_d27_calculate_sidereal_longitude(jd_utc, code)
+            natal_planet_lons[planet] = lon
+            natal_planet_retro[planet] = retro
+
+        d27_chart = {}
+
+        # Ascendant
+        asc_nak, asc_lord, asc_pada = raman_d27_get_nakshatra_pada(d27_asc_lon)
+        natal_asc_nak, natal_asc_lord, natal_asc_pada = raman_d27_get_nakshatra_pada(natal_asc_lon)
+        d27_chart["Ascendant"] = {
+            "d27_sign": ZODIAC_SIGNS_raman[d27_asc_sign_index],
+            "degrees": round(d27_asc_deg, 4),
+            "house": 1,
+            "d27_nakshatra": asc_nak,
+            "d27_nakshatra_lord": asc_lord,
+            "d27_pada": asc_pada,
+            # "natal_sign": ZODIAC_SIGNS_raman[raman_d27_get_sign_index(natal_asc_lon)],
+            # "natal_nakshatra": natal_asc_nak,
+            # "natal_nakshatra_lord": natal_asc_lord,
+            # "natal_pada": natal_asc_pada,
+            "retrograde": False
+        }
+
+        for planet in list(PLANET_CODES.keys()) + ["Ketu"]:
+            natal_lon = natal_planet_lons[planet]
+            d27_lon = raman_d27_calculate_d27_longitude(natal_lon)
+            d27_sign_index = raman_d27_get_sign_index(d27_lon)
+            d27_deg = d27_lon % 30
+            house = raman_d27_calculate_house(d27_asc_sign_index, d27_sign_index)
+            natal_sign = ZODIAC_SIGNS_raman[raman_d27_get_sign_index(natal_lon)]
+            retro = natal_planet_retro[planet]
+
+            d27_nakshatra, d27_nak_lord, d27_pada = raman_d27_get_nakshatra_pada(d27_lon)
+            natal_nakshatra, natal_nak_lord, natal_pada = raman_d27_get_nakshatra_pada(natal_lon)
+
+            d27_chart[planet] = {
+                "d27_sign": ZODIAC_SIGNS_raman[d27_sign_index],
+                "degrees": round(d27_deg, 4),
+                "house": house,
+                "d27_nakshatra": d27_nakshatra,
+                "d27_nakshatra_lord": d27_nak_lord,
+                "d27_pada": d27_pada,
+                # "natal_sign": natal_sign,
+                # "natal_nakshatra": natal_nakshatra,
+                # "natal_nakshatra_lord": natal_nak_lord,
+                # "natal_pada": natal_pada,
+                "retrograde": retro
+            }
+
+        response = {
+            "user_name": user_name,
+            "d27_chart": d27_chart
+        }
+        return jsonify(response), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+
+
+
 #  Trimshamsha D30 
+
+
+
+
 @rl.route('/calculate_d30_chart', methods=['POST'])
 def calculate_d30_chart():
-    """API endpoint to calculate D30 chart."""
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
-
         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
@@ -609,7 +721,37 @@ def calculate_d30_chart():
         longitude = data['longitude']
         tz_offset = float(data['timezone_offset'])
 
-        natal_positions, d30_positions = raman_trimshamsha_D30(birth_date, birth_time, latitude, longitude, tz_offset)
+        jd = raman_d30_get_julian_day(birth_date, birth_time, tz_offset)
+        natal_positions = raman_d30_calculate_sidereal_longitudes(jd, latitude, longitude)
+
+        d30_positions = {}
+        # First get the D30 sign and index for the Ascendant
+        asc_sign, asc_deg, asc_sign_index, asc_natal_sign, asc_natal_deg = raman_d30_get_d30_sign_and_degree(
+            natal_positions['Ascendant']['longitude']
+        )
+
+        for planet, pdata in natal_positions.items():
+            longitude = pdata['longitude']
+            sign, degree, d30_sign_index, natal_sign, natal_deg = raman_d30_get_d30_sign_and_degree(longitude)
+            nak, nak_lord, pada = raman_d30_get_nakshatra_and_pada(longitude)
+            d30_positions[planet] = {
+                'sign': sign,
+                'degree': raman_d30_format_degree(degree),
+                'retrograde': pdata['retrograde'],
+                'nakshatra': nak,
+                'natal_sign': natal_sign,
+                'natal_degree': raman_d30_format_degree(natal_deg),
+                'natal_longitude': round(longitude, 4),
+                'pada': pada,
+                'd30_sign_index': d30_sign_index
+            }
+
+        # Now assign houses properly
+        raman_d30_assign_houses(d30_positions, asc_sign_index)
+        # Remove 'd30_sign_index' from output for clarity
+        for planet in d30_positions:
+            if 'd30_sign_index' in d30_positions[planet]:
+                del d30_positions[planet]['d30_sign_index']
 
         response = {
             "user_name": data.get('user_name', 'Unknown'),
@@ -1049,6 +1191,45 @@ def calculate_sarvashtakavarga_endpoint():
         logging.error(f"Error: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
+
+
+
+#  Shodamsha Vargha sumary Sings.
+@rl.route('/raman/shodasha_varga_signs', methods=['POST'])
+def shodasha_varga_signs():
+    try:
+        data = request.get_json()
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+
+        utc_dt = raman_sign_local_to_utc(birth_date, birth_time, timezone_offset)
+        jd = raman_sign_julian_day(utc_dt)
+
+        sid_positions = raman_sign_get_sidereal_positions(jd)
+        sid_asc, asc_sign_idx, asc_deg_in_sign = raman_sign_get_sidereal_asc(jd, latitude, longitude)
+        sid_positions['Ascendant'] = (sid_asc, asc_sign_idx, asc_deg_in_sign)
+
+        summary = {}
+        for pname in sid_positions.keys():
+            summary[pname] = {}
+
+        for chart in CHARTS:
+            for pname, (lon, sign_idx, deg_in_sign) in sid_positions.items():
+                varga_idx = raman_sign_varga_sign(sign_idx, deg_in_sign, chart)
+                summary[pname][chart] = {"sign": SIGNS[varga_idx]}
+
+        return jsonify({
+            "ayanamsa": "Raman",
+            "shodasha_varga_signs": summary,
+            "user_name": user_name
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 

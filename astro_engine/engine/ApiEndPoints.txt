@@ -1,6 +1,7 @@
 
-
-Ramam Routes :
+-------------------------------------------------------------------------------------------------
+**********************************        Ramam Routes :      ***********************************
+-------------------------------------------------------------------------------------------------
 
 http://localhost:5000/raman/natal
 http://localhost:5000/raman/transit
@@ -19,6 +20,7 @@ http://localhost:5000/raman/calculate_d12
 http://localhost:5000/raman/calculate_d16
 http://localhost:5000/raman/calculate_d20
 http://localhost:5000/raman/calculate_d24
+http://localhost:5000/raman/calculate_d27_chart
 http://localhost:5000/raman/calculate_d40
 http://localhost:5000/raman/calculate_d45  issue(goutham)
 http://localhost:5000/raman/calculate_d60
@@ -33,6 +35,7 @@ http://localhost:5000/raman/calculate_d9_karkamsha
 
 http://localhost:5000/raman/calculate_bhinnashtakavarga
 http://localhost:5000/raman/calculate_sarvashtakavarga
+http://localhost:5000/raman/shodasha_varga_signs
 
 
 http://localhost:5000/raman/calculate_maha_antar_dashas
@@ -41,8 +44,9 @@ http://localhost:5000/raman/calculate_sookshma_dasha_raman
 http://localhost:5000/raman/calculate_raman_prana_dasha
 
 
-
-Lahairi Routes :
+-------------------------------------------------------------------------------------------------
+**********************************        Lahiri Routes       ***********************************
+-------------------------------------------------------------------------------------------------
 
 http://localhost:5000/lahiri/natal
 http://localhost:5000/lahiri/transit
@@ -61,6 +65,8 @@ http://localhost:5000/lahiri/calculate_d12
 http://localhost:5000/lahiri/calculate_d16
 http://localhost:5000/lahiri/calculate_d20
 http://localhost:5000/lahiri/calculate_d24
+http://localhost:5000/lahiri/calculate_d30
+http://localhost:5000/lahiri/calculate_d27
 http://localhost:5000/lahiri/calculate_d40
 http://localhost:5000/lahiri/calculate_d45
 http://localhost:5000/lahiri/calculate_d60
@@ -85,19 +91,27 @@ http://localhost:5000/lahiri/calculate_sookshma_prana_dashas
 
 http://localhost:5000/lahiri/calculate_binnatakvarga
 http://localhost:5000/lahiri/calculate_sarvashtakavarga
+http://localhost:5000/lahiri/lahiri/shodasha_varga_summary
 
 
-
-Kp Systems :
+-------------------------------------------------------------------------------------------------
+**********************************       KP Sysytem Routes      ***********************************
+---------------------------------------------------------------------------------------------------
 
 http://localhost:5000/kp/calculate_kp_planets_cusps
 http://localhost:5000/kp/calculate_ruling_planets
 http://localhost:5000/kp/calculate_bhava_details
 http://localhost:5000/kp/calculate_significations
+
 http://localhost:5000/kp/calculate_maha_antar_dasha
 http://localhost:5000/kp/calculate_maha_antar_pratyantar_dasha
 http://localhost:5000/kp/calculate_maha_antar_pratyantar_sooksha_dasha
 http://localhost:5000/kp/calculate_maha_antar_pratyantar_pran_dasha
+
+
+http://localhost:5000/kp/shodasha_varga_signs
+
+
 
 
 

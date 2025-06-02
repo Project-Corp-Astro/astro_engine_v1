@@ -2,8 +2,11 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import logging
 from venv import logger
+import swisseph as swe
 
+swe.set_ephe_path('astro_api/ephe')
 
+from astro_engine.engine.ashatakavargha.LahiriVarghSigns import DCHARTS, lahiri_sign_get_sidereal_asc, lahiri_sign_get_sidereal_positions, lahiri_sign_julian_day, lahiri_sign_local_to_utc, lahiri_sign_varga_sign
 from astro_engine.engine.ashatakavargha.Sarvasthakavargha import lahiri_sarvathakavargha
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_antar_balance, calculate_mahadasha_periods, calculate_moon_sidereal_antar_position, get_julian_dasha_day, get_nakshatra_and_antar_lord
 from astro_engine.engine.dashas.LahiriPranDasha import calculate_dasha_balance_pran, calculate_moon_sidereal_position_prana, calculate_pranaDasha_periods, get_julian_day_pran, get_nakshatra_and_lord_prana
@@ -18,6 +21,7 @@ from astro_engine.engine.divisionalCharts.HoraD2 import lahairi_hora_chart
 from astro_engine.engine.divisionalCharts.KvedamshaD40 import  lahairi_Khavedamsha
 from astro_engine.engine.divisionalCharts.NavamshaD9 import  lahairi_navamsha_chart
 from astro_engine.engine.divisionalCharts.SaptamshaD7 import  lahairi_saptamsha
+from astro_engine.engine.divisionalCharts.SaptavimshamshaD27 import PLANET_CODES, ZODIAC_SIGNS_d27, d27_calculate_ascendant, d27_calculate_house, d27_calculate_longitude, d27_calculate_sidereal_longitude, d27_get_julian_day_utc, d27_get_nakshatra_pada, d27_get_sign_index
 from astro_engine.engine.divisionalCharts.ShodasmasD16 import  lahairi_Shodashamsha
 
 from astro_engine.engine.divisionalCharts.TrimshamshaD30 import lahiri_trimshamsha_D30
@@ -553,85 +557,109 @@ def calculate_d24():
 
 
 # Saptavimshamsha (D-27)
-# @bp.route('/calculate_d27', methods=['POST'])
-# def calculate_d27_chart():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No JSON data provided"}), 400
 
-#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-#         if not all(field in data for field in required_fields):
-#             return jsonify({"error": "Missing required fields"}), 400
+@bp.route('/lahiri/calculate_d27', methods=['POST'])
+def calculate_d27_chart():
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
 
-#         user_name = data.get('user_name', 'Unknown')
-#         birth_date = data['birth_date']
-#         birth_time = data['birth_time']
-#         latitude = float(data['latitude'])
-#         longitude = float(data['longitude'])
-#         tz_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
 
-#         jd = get_julian_day(birth_date, birth_time, tz_offset)
-#         d1_positions = calculate_d1_positions(jd, latitude, longitude)
-#         d27_positions = calculate_d27_positions(d1_positions)
-#         d27_asc_sign = d27_positions['Ascendant']
-#         d27_houses = calculate_d27_houses(d27_asc_sign, d27_positions)
+        jd_utc = d27_get_julian_day_utc(birth_date, birth_time, tz_offset)
+        natal_asc_lon = d27_calculate_ascendant(jd_utc, latitude, longitude)
+        d27_asc_lon = d27_calculate_longitude(natal_asc_lon)
+        d27_asc_sign_index = d27_get_sign_index(d27_asc_lon)
+        d27_asc_deg = d27_asc_lon % 30
 
-#         response = {
-#             "user_name": user_name,
-#             "d27_chart": {"positions": {planet: SIGN_NAMES[sign - 1] for planet, sign in d27_positions.items()}, "houses": d27_houses}
-#         }
-#         return jsonify(response), 200
+        natal_planet_lons = {}
+        natal_planet_retro = {}
 
-#     except ValueError as ve:
-#         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
-#     except Exception as e:
-#         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+        # Rahu/Ketu
+        natal_rahu_lon, _ = d27_calculate_sidereal_longitude(jd_utc, swe.MEAN_NODE)
+        natal_ketu_lon = (natal_rahu_lon + 180) % 360
+        natal_planet_lons["Rahu"] = natal_rahu_lon
+        natal_planet_lons["Ketu"] = natal_ketu_lon
+        natal_planet_retro["Rahu"] = True
+        natal_planet_retro["Ketu"] = True
 
+        for planet, code in PLANET_CODES.items():
+            if planet == "Rahu":
+                continue  # Already handled
+            lon, retro = d27_calculate_sidereal_longitude(jd_utc, code)
+            natal_planet_lons[planet] = lon
+            natal_planet_retro[planet] = retro
+
+        d27_chart = {}
+
+        # Ascendant
+        asc_nak, asc_lord, asc_pada = d27_get_nakshatra_pada(d27_asc_lon)
+        natal_asc_nak, natal_asc_lord, natal_asc_pada = d27_get_nakshatra_pada(natal_asc_lon)
+        d27_chart["Ascendant"] = {
+            "d27_sign": ZODIAC_SIGNS_d27[d27_asc_sign_index],
+            "degrees": round(d27_asc_deg, 4),
+            "house": 1,
+            "d27_nakshatra": asc_nak,
+            "d27_nakshatra_lord": asc_lord,
+            "d27_pada": asc_pada,
+            # "natal_sign": ZODIAC_SIGNS_d27[d27_get_sign_index(natal_asc_lon)],
+            # "natal_nakshatra": natal_asc_nak,
+            # "natal_nakshatra_lord": natal_asc_lord,
+            # "natal_pada": natal_asc_pada,
+            "retrograde": False
+        }
+
+        for planet in list(PLANET_CODES.keys()) + ["Ketu"]:
+            natal_lon = natal_planet_lons[planet]
+            d27_lon = d27_calculate_longitude(natal_lon)
+            d27_sign_index = d27_get_sign_index(d27_lon)
+            d27_deg = d27_lon % 30
+            house = d27_calculate_house(d27_asc_sign_index, d27_sign_index)
+            natal_sign = ZODIAC_SIGNS_d27[d27_get_sign_index(natal_lon)]
+            retro = natal_planet_retro[planet]
+
+            d27_nakshatra, d27_nak_lord, d27_pada = d27_get_nakshatra_pada(d27_lon)
+            natal_nakshatra, natal_nak_lord, natal_pada = d27_get_nakshatra_pada(natal_lon)
+
+            d27_chart[planet] = {
+                "d27_sign": ZODIAC_SIGNS_d27[d27_sign_index],
+                "degrees": round(d27_deg, 4),
+                "house": house,
+                "d27_nakshatra": d27_nakshatra,
+                "d27_nakshatra_lord": d27_nak_lord,
+                "d27_pada": d27_pada,
+                # "natal_sign": natal_sign,
+                # "natal_nakshatra": natal_nakshatra,
+                # "natal_nakshatra_lord": natal_nak_lord,
+                # "natal_pada": natal_pada,
+                # "retrograde": retro
+            }
+
+        response = {
+            "user_name": user_name,
+            "d27_chart": d27_chart
+        }
+        return jsonify(response), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 
 
 
 #  Trimshamsha D-30 
-# @bp.route('/calculate_d30_chart', methods=['POST'])
-# def calculate_d30_chart():
-#     """API endpoint to calculate D30 chart."""
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No JSON data provided"}), 400
 
-#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-#         if not all(field in data for field in required_fields):
-#             return jsonify({"error": "Missing required fields"}), 400
-
-#         birth_date = data['birth_date']
-#         birth_time = data['birth_time']
-#         latitude = data['latitude']
-#         longitude = data['longitude']
-#         tz_offset = float(data['timezone_offset'])
-
-#         jd = get_julian_day_d30(birth_date, birth_time, tz_offset)
-#         natal_positions = calculate_sidereal_longitudes_d30(jd, latitude, longitude)
-
-#         d30_positions = lahiri_trimshamsha_d30(natal_positions)
-
-#         ascendant_sign = d30_positions['Ascendant']['sign']
-#         assign_houses_d30(d30_positions, ascendant_sign)
-
-#         response = {
-#             "user_name": data.get('user_name', 'Unknown'),
-#             "natal_positions": {p: natal_positions[p]['longitude'] for p in natal_positions},
-#             "d30_chart": d30_positions
-#         }
-#         return jsonify(response), 200
-
-#     except ValueError as ve:
-#         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
-#     except Exception as e:
-#         return jsonify({"error": f"Server error: {str(e)}"}), 500
-
-@bp.route('/calculate_d30_chart', methods=['POST'])
+@bp.route('/lahiri/calculate_d30', methods=['POST'])
 def calculate_d30_chart():
     """API endpoint to calculate D30 chart."""
     try:
@@ -1025,7 +1053,7 @@ def calculate_d1_karkamsha_endpoint():
 
 
 #  KarKamsha D9 Chart 
-@bp.route('/calculate_karkamsha_d9', methods=['POST'])
+@bp.route('/lahiri/calculate_karkamsha_d9', methods=['POST'])
 def calculate_karkamsha_endpoint():
     """API endpoint to calculate the Karkamsha chart."""
     try:
@@ -1640,4 +1668,49 @@ def calculate_sarvashtakavarga_endpoint():
     except Exception as e:
         logging.error(f"Error: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+
+
+#  Shodamsha Vargha sumary Sings.
+@bp.route('/lahiri/shodasha_varga_summary', methods=['POST'])
+def shodasha_varga_summary():
+    try:
+        data = request.get_json()
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        latitude = float(data['latitude'])
+        longitude = float(data['longitude'])
+        timezone_offset = float(data['timezone_offset'])
+        user_name = data.get('user_name', 'Unknown')
+
+        utc_dt = lahiri_sign_local_to_utc(birth_date, birth_time, timezone_offset)
+        jd = lahiri_sign_julian_day(utc_dt)
+
+        sid_positions = lahiri_sign_get_sidereal_positions(jd)
+        sid_asc, asc_sign_idx, asc_deg_in_sign = lahiri_sign_get_sidereal_asc(jd, latitude, longitude)
+        sid_positions['Ascendant'] = (sid_asc, asc_sign_idx, asc_deg_in_sign)
+
+        summary = {}
+        for pname in list(sid_positions.keys()):
+            summary[pname] = {}
+
+        for chart, _ in DCHARTS:
+            for pname, (lon, sign_idx, deg_in_sign) in sid_positions.items():
+                sign_result = lahiri_sign_varga_sign(
+                    pname,
+                    deg_in_sign,
+                    sign_idx,
+                    chart,
+                    asc=(pname == "Ascendant")
+                )
+                summary[pname][chart] = SIGNS[sign_result]
+
+        return jsonify({
+            "user_name": user_name,
+            "shodasha_varga_summary": summary
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
