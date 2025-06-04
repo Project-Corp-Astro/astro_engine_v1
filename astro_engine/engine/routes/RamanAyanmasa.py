@@ -5,6 +5,7 @@ import logging
 from venv import logger
 import swisseph as swe
 
+from astro_engine.engine.lagnaCharts.RamanBavaLagna import PLANET_IDS, raman_bava_calculate_bhava_lagna, raman_bava_calculate_house, raman_bava_calculate_sunrise, raman_bava_get_julian_day, raman_bava_get_sign_and_degrees, raman_bava_nakshatra_and_pada
 from astro_engine.engine.ashatakavargha.RamanVarghaSigns import CHARTS, SIGNS, raman_sign_get_sidereal_asc, raman_sign_get_sidereal_positions, raman_sign_julian_day, raman_sign_local_to_utc, raman_sign_varga_sign
 from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_d30_assign_houses, raman_d30_calculate_sidereal_longitudes, raman_d30_format_degree, raman_d30_get_d30_sign_and_degree, raman_d30_get_julian_day, raman_d30_get_nakshatra_and_pada
 
@@ -22,7 +23,7 @@ from astro_engine.engine.dashas.RamanSookshmaDasha import calculate_moon_siderea
 from astro_engine.engine.divisionalCharts.DreshkanaD3 import PLANET_NAMES, get_julian_day
 from astro_engine.engine.lagnaCharts.MoonRaman import raman_moon_chart, validate_input
 from astro_engine.engine.lagnaCharts.RamanArudha import raman_arudha_lagna
-from astro_engine.engine.lagnaCharts.RamanBavaLagna import raman_bava_lagna
+    
 from astro_engine.engine.lagnaCharts.RamanEqualBava import raman_equal_bava_lagnas
 from astro_engine.engine.lagnaCharts.RamanKarkamshaD1 import raman_karkamsha_D1
 from astro_engine.engine.lagnaCharts.RamanKarkamshaD9 import raman_karkamsha_D9
@@ -865,25 +866,63 @@ def calculate_d60():
 #  Bava Lagna 
 
 @rl.route('/raman/calculate_bhava_lagna', methods=['POST'])
-def calculate_bhava_lagna():
+def raman_bava_calculate_bhava_lagna_chart():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-        required = ['user_name', 'birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-        if not all(key in data for key in required):
-            return jsonify({"error": "Missing required parameters"}), 400
-        response = raman_bava_lagna(
-            data['birth_date'],
-            data['birth_time'],
-            float(data['latitude']),
-            float(data['longitude']),
-            float(data['timezone_offset']),
-            data['user_name']
-        )
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(k in data for k in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        lat = float(data['latitude'])
+        lon = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        birth_jd = raman_bava_get_julian_day(birth_date, birth_time, tz_offset)
+        sunrise_jd, sunrise_sun_lon = raman_bava_calculate_sunrise(birth_jd, lat, lon, tz_offset)
+        bl_lon = raman_bava_calculate_bhava_lagna(birth_jd, sunrise_jd, sunrise_sun_lon)
+        bl_sign, bl_degrees = raman_bava_get_sign_and_degrees(bl_lon)
+        bl_nak, bl_nak_lord, bl_pada = raman_bava_nakshatra_and_pada(bl_lon)
+
+        positions = {}
+        for planet, pid in PLANET_IDS.items():
+            if planet == 'Ketu':
+                continue
+            pos_data = swe.calc_ut(birth_jd, pid, swe.FLG_SIDEREAL | swe.FLG_SPEED)[0]
+            lon = pos_data[0] % 360
+            sign, degrees = raman_bava_get_sign_and_degrees(lon)
+            retrograde = 'R' if pos_data[3] < 0 else ''
+            house = raman_bava_calculate_house(sign, bl_sign)
+            nak, nak_lord, pada = raman_bava_nakshatra_and_pada(lon)
+            positions[planet] = {
+                "degrees": round(degrees, 4), "sign": sign, "retrograde": retrograde,
+                "house": house, "nakshatra": nak, "nakshatra_lord": nak_lord, "pada": pada
+            }
+
+        # Calculate Ketu
+        rahu_lon = positions['Rahu']['degrees'] + (SIGNS.index(positions['Rahu']['sign']) * 30)
+        ketu_lon = (rahu_lon + 180) % 360
+        ketu_sign, ketu_degrees = raman_bava_get_sign_and_degrees(ketu_lon)
+        ketu_nak, ketu_nak_lord, ketu_pada = raman_bava_nakshatra_and_pada(ketu_lon)
+        positions['Ketu'] = {
+            "degrees": round(ketu_degrees, 4), "sign": ketu_sign, "retrograde": "",
+            "house": raman_bava_calculate_house(ketu_sign, bl_sign),
+            "nakshatra": ketu_nak, "nakshatra_lord": ketu_nak_lord, "pada": ketu_pada
+        }
+
+        response = {
+            "bhava_lagna": {
+                "sign": bl_sign, "degrees": round(bl_degrees, 4),
+                "nakshatra": bl_nak, "nakshatra_lord": bl_nak_lord, "pada": bl_pada
+            },
+            "planets": positions
+        }
         return jsonify(response), 200
+
     except Exception as e:
-        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+        logging.error(f"Error in calculation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 

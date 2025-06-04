@@ -9,6 +9,7 @@ from astro_engine.engine.dashas.KpAntar import calculate_maha_antar_dasha
 from astro_engine.engine.dashas.KpPran import calculate_maha_antar_pratyantar_pran_dasha
 from astro_engine.engine.dashas.KpPratyantar import calculate_maha_antar_pratyantar_dasha
 from astro_engine.engine.dashas.KpSookshma import calculate_maha_antar_pratyantar_sooksha_dashas
+from astro_engine.engine.kpSystem.KpHorary import KP_NEW_AYANAMSA, calc_vimshottari_dasha_path, check_radicality, check_void_of_course_moon, get_asc_from_horary_num, get_nakshatra_chain, get_ruling_planets, get_sign_lord, get_significators_expanded, house_cusps, julday_from_date_time, kp_timing_by_dasha_layers, planet_chain, planet_house_assignment, sign_deg, sub_lord_chain_judgment
 from astro_engine.engine.kpSystem.charts.BhavaHouses import calculate_bhava_houses_details
 from astro_engine.engine.kpSystem.charts.CupsalChart import ZODIAC_SIGNS, cupsal_assign_nakshatra_and_lords, cupsal_assign_planet_to_house, cupsal_calculate_ascendant_and_cusps, cupsal_calculate_kp_new_ayanamsa, cupsal_calculate_planet_positions, cupsal_calculate_significators, cupsal_format_dms, cupsal_get_julian_day
 from astro_engine.engine.kpSystem.charts.RulingPlanets import ruling_calculate_ascendant_and_cusps, ruling_calculate_balance_of_dasha, ruling_calculate_fortuna, ruling_calculate_jd, ruling_calculate_planet_positions, ruling_check_rahu_ketu, ruling_compile_core_rp, ruling_get_day_lord, ruling_get_details
@@ -310,4 +311,112 @@ def shodasha_varga_signs():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+#  KP Horary 
+@kp.route('/kp/kp_horary', methods=['POST'])
+def kp_horary():
+    try:
+        data = request.get_json()
+        horary_num = int(data["horary_number"])
+        date_str = data["date"]
+        time_str = data["time"]
+        tz_offset = float(data.get("tz_offset", 5.5))
+        lat = float(data["latitude"])
+        lon = float(data["longitude"])
+        question = data["question"]
+        jd = julday_from_date_time(date_str, time_str, tz_offset)
+        question_lower = question.lower()
+        if "house" in question_lower or "property" in question_lower or "buy" in question_lower:
+            main_house = 4
+            good_houses = [4,11]
+            bad_houses = [3,6,12]
+        elif "job" in question_lower or "career" in question_lower or "work" in question_lower:
+            main_house = 10
+            good_houses = [6,10,11]
+            bad_houses = [5,8,12]
+        elif "marriage" in question_lower or "spouse" in question_lower or "partner" in question_lower:
+            main_house = 7
+            good_houses = [2,7,11]
+            bad_houses = [1,6,10]
+        else:
+            main_house = int(data.get("main_house", 10))
+            good_houses = [6,10,11]
+            bad_houses = [5,8,12]
+    except Exception as e:
+        return jsonify({"error": "Invalid input, error: %s" % str(e)}), 400
+
+    asc_long = get_asc_from_horary_num(horary_num)
+    sign, sign_name, asc_deg_in_sign = sign_deg(asc_long)
+    chain = get_nakshatra_chain(asc_long, 4)
+    ascendant = {
+        "longitude": round(asc_long, 6),
+        "sign": sign_name,
+        "deg_in_sign": round(asc_deg_in_sign, 6),
+        "rasi_lord": get_sign_lord(sign_name),
+        "nakshatra_lord": chain[0],
+        "sub_lord": chain[1],
+        "sub_sub_lord": chain[2],
+        "sub_sub_sub_lord": chain[3]
+    }
+
+    cusps = house_cusps(jd, lat, lon, asc_long, KP_NEW_AYANAMSA)
+    planets = planet_chain(jd, KP_NEW_AYANAMSA)
+    planets_in_houses, planets = planet_house_assignment(planets, cusps)
+    moon = next(p for p in planets if p["name"] == "Moon")
+    radicality = check_radicality(asc_long)
+    moon_voc = check_void_of_course_moon(planets, cusps)
+    dasha_path = calc_vimshottari_dasha_path(jd, moon["longitude"])
+    lagna_planets = planets_in_houses[0]
+
+    ruling_planets = get_ruling_planets(ascendant, moon, date_str)
+    significators = get_significators_expanded(main_house, cusps, planets)
+    sub_lord_chain = sub_lord_chain_judgment(main_house, cusps, planets, good_houses, bad_houses)
+    kp_timing = kp_timing_by_dasha_layers(dasha_path, planets, cusps, good_houses)
+
+    verdict = sub_lord_chain["verdict"]
+    confidence = sub_lord_chain["confidence"]
+    rationale = f"Sub-lord chain verdict: {sub_lord_chain['rationale']}. "
+    if kp_timing:
+        event_timing = kp_timing[0]
+        rationale += f"Event window: {event_timing['event_estimate']}."
+        verdict += " (with dasha support)"
+    else:
+        rationale += "No clear Dasha timing for event."
+    final_judgment = {
+        "yes_no": verdict,
+        "confidence": confidence,
+        "rationale": rationale,
+        "timing_estimate": kp_timing[0] if kp_timing else None
+    }
+
+    output = {
+        "question": question,
+        "horary_number": horary_num,
+        "date": date_str,
+        "time": time_str,
+        "tz_offset": tz_offset,
+        "latitude": lat,
+        "longitude": lon,
+        "ascendant": ascendant,
+        "house_cusps": cusps,
+        "planets": planets,
+        "planets_in_houses": planets_in_houses,
+        "lagna_planets": lagna_planets,
+        "vimshottari_dasha": dasha_path,
+        "kp_timing": kp_timing,
+        "chart_radicality": radicality,
+        "moon_void_of_course": moon_voc,
+        "ruling_planets": ruling_planets,
+        "significators": significators,
+        "sub_lord_chain_judgment": sub_lord_chain,
+        "main_house": main_house,
+        "final_judgment": final_judgment
+    }
+    return jsonify(output)
+
+
+
+
 

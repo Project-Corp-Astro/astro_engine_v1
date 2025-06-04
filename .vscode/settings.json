@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./astro_engine/engine/lagnaCharts"
+    ]
+}

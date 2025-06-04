@@ -6,6 +6,9 @@ import swisseph as swe
 
 swe.set_ephe_path('astro_api/ephe')
 
+
+from astro_engine.engine.lagnaCharts.LahiriHoraLagna import lahiri_hora_calculate_hora_lagna, lahiri_hora_calculate_house, lahiri_hora_calculate_sunrise_jd_and_asc, lahiri_hora_get_julian_day, lahiri_hora_get_sign_and_degrees, lahiri_hora_nakshatra_and_pada
+from astro_engine.engine.lagnaCharts.LahiriBavaLagna import PLANET_IDS, bava_calculate_bhava_lagna, bava_calculate_house, bava_calculate_sunrise, bava_get_julian_day, bava_get_sign_and_degrees, bava_nakshatra_and_pada
 from astro_engine.engine.ashatakavargha.LahiriVarghSigns import DCHARTS, lahiri_sign_get_sidereal_asc, lahiri_sign_get_sidereal_positions, lahiri_sign_julian_day, lahiri_sign_local_to_utc, lahiri_sign_varga_sign
 from astro_engine.engine.ashatakavargha.Sarvasthakavargha import lahiri_sarvathakavargha
 from astro_engine.engine.dashas.AntarDasha import calculate_dasha_antar_balance, calculate_mahadasha_periods, calculate_moon_sidereal_antar_position, get_julian_dasha_day, get_nakshatra_and_antar_lord
@@ -26,13 +29,12 @@ from astro_engine.engine.divisionalCharts.ShodasmasD16 import  lahairi_Shodasham
 
 from astro_engine.engine.divisionalCharts.TrimshamshaD30 import lahiri_trimshamsha_D30
 from astro_engine.engine.lagnaCharts.ArudhaLagna import lahairi_arudha_lagna
-from astro_engine.engine.lagnaCharts.BavaLagna import  lahairi_bava_lagan
 from astro_engine.engine.lagnaCharts.EqualLagan import SIGNS,  lahairi_equal_bava
 from astro_engine.engine.lagnaCharts.KPLagna import  lahairi_kp_bava
 from astro_engine.engine.lagnaCharts.LahiriKarkamshaD1 import lahiri_karkamsha_d1
 from astro_engine.engine.lagnaCharts.LahiriKarkamshaD9 import lahiri_karkamsha_D9
 from astro_engine.engine.lagnaCharts.Sripathi import lahairi_sripathi_bava
-from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_sign,     format_dms
+from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_sign, format_dms
 from astro_engine.engine.natalCharts.transit import  lahairi_tranist
 from astro_engine.engine.numerology.CompositeChart import  lahairi_composite
 from astro_engine.engine.numerology.LoShuGridNumerology import calculate_lo_shu_grid
@@ -870,54 +872,69 @@ def calculate_kp_bhava():
 
 
 
+
 # Equal Bhava Lagna
-# @bp.route('/calculate_equal_bhava_lagna', methods=['POST'])
-# def bava_calculate_endpoint():
-#     try:
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No JSON data provided"}), 400
 
-#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
-#         if not all(key in data for key in required_fields):
-#             return jsonify({"error": "Missing required parameters"}), 400
 
-#         user_name = data.get('user_name', 'Unknown')
-#         birth_date = data['birth_date']
-#         birth_time = data['birth_time']
-#         latitude = float(data['latitude'])
-#         longitude = float(data['longitude'])
-#         tz_offset = float(data['timezone_offset'])
+@bp.route('/lahiri/calculate_bhava_lagna', methods=['POST'])
+def bava_calculate_bhava_lagna_chart():
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(k in data for k in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
 
-#         jd = bava_get_julian_day(birth_date, birth_time, tz_offset)
-#         ascendant = bava_calculate_ascendant(jd, latitude, longitude)
-#         ascendant_sign_index = int(ascendant // 30)
-#         planetary_positions = bava_get_planet_positions(jd)
-#         cusps_degrees = bava_calculate_equal_bhava_cusps(ascendant)
-#         cusps_formatted = [bava_format_dms(cusp) for cusp in cusps_degrees]
-#         house_data = [
-#             {"house": i + 1, "cusp": cusps_formatted[i], "sign": SIGNS[int(cusps_degrees[i] // 30)]}
-#             for i in range(12)
-#         ]
-#         house_assignments = bava_assign_planets_to_houses(planetary_positions, ascendant_sign_index)
-#         planetary_data = [
-#             {"planet": planet, "longitude": bava_format_dms(longitude), "sign": SIGNS[int(longitude // 30)], "retrograde": retrograde, "house": house_assignments[planet]}
-#             for planet, (longitude, retrograde) in planetary_positions.items()
-#         ]
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        lat = float(data['latitude'])
+        lon = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
 
-#         response = {
-#             "user_name": user_name,
-#             "ascendant": {"longitude": bava_format_dms(ascendant), "sign": SIGNS[ascendant_sign_index]},
-#             "planetary_positions": planetary_data,
-#             "house_cusps": house_data,
-#             "metadata": {"ayanamsa": "Lahiri", "house_system": "Equal Bhava (Whole Sign based)", "calculation_time": datetime.utcnow().isoformat(), "input": data}
-#         }
-#         return jsonify(response), 200
+        birth_jd = bava_get_julian_day(birth_date, birth_time, tz_offset)
+        sunrise_jd, sunrise_sun_lon = bava_calculate_sunrise(birth_jd, lat, lon, tz_offset)
+        bl_lon = bava_calculate_bhava_lagna(birth_jd, sunrise_jd, sunrise_sun_lon)
+        bl_sign, bl_degrees = bava_get_sign_and_degrees(bl_lon)
+        bl_nak, bl_nak_lord, bl_pada = bava_nakshatra_and_pada(bl_lon)
 
-#     except ValueError as ve:
-#         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
-#     except Exception as e:
-#         return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
+        positions = {}
+        for planet, pid in PLANET_IDS.items():
+            if planet == 'Ketu':
+                continue
+            pos_data = swe.calc_ut(birth_jd, pid, swe.FLG_SIDEREAL | swe.FLG_SPEED)[0]
+            lon = pos_data[0] % 360
+            sign, degrees = bava_get_sign_and_degrees(lon)
+            retrograde = 'R' if pos_data[3] < 0 else ''
+            house = bava_calculate_house(sign, bl_sign)
+            nak, nak_lord, pada = bava_nakshatra_and_pada(lon)
+            positions[planet] = {
+                "degrees": round(degrees, 4), "sign": sign, "retrograde": retrograde,
+                "house": house, "nakshatra": nak, "nakshatra_lord": nak_lord, "pada": pada
+            }
+
+        # Calculate Ketu
+        rahu_lon = positions['Rahu']['degrees'] + (SIGNS.index(positions['Rahu']['sign']) * 30)
+        ketu_lon = (rahu_lon + 180) % 360
+        ketu_sign, ketu_degrees = bava_get_sign_and_degrees(ketu_lon)
+        ketu_nak, ketu_nak_lord, ketu_pada = bava_nakshatra_and_pada(ketu_lon)
+        positions['Ketu'] = {
+            "degrees": round(ketu_degrees, 4), "sign": ketu_sign, "retrograde": "",
+            "house": bava_calculate_house(ketu_sign, bl_sign),
+            "nakshatra": ketu_nak, "nakshatra_lord": ketu_nak_lord, "pada": ketu_pada
+        }
+
+        response = {
+            "bhava_lagna": {
+                "sign": bl_sign, "degrees": round(bl_degrees, 4),
+                "nakshatra": bl_nak, "nakshatra_lord": bl_nak_lord, "pada": bl_pada
+            },
+            "planets": positions
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Error in calculation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 
 
 
@@ -1088,6 +1105,69 @@ def calculate_karkamsha_endpoint():
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+
+#  Hora Lagna Chart :
+
+@bp.route('/calculate_hora_lagna', methods=['POST'])
+def lahiri_hora_calculate_hora_lagna_chart():
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(k in data for k in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        lat = float(data['latitude'])
+        lon = float(data['longitude'])
+        global tz_offset
+        tz_offset = float(data['timezone_offset'])
+
+        birth_jd = lahiri_hora_get_julian_day(birth_date, birth_time, tz_offset)
+        sunrise_jd, sunrise_asc = lahiri_hora_calculate_sunrise_jd_and_asc(birth_jd, lat, lon, tz_offset)
+        hl_lon = lahiri_hora_calculate_hora_lagna(birth_jd, sunrise_jd, sunrise_asc)
+        hl_sign, hl_degrees = lahiri_hora_get_sign_and_degrees(hl_lon)
+        hl_nak, hl_nak_lord, hl_pada = lahiri_hora_nakshatra_and_pada(hl_lon)
+
+        positions = {}
+        for planet, pid in PLANET_IDS.items():
+            if planet == 'Ketu':
+                continue
+            pos_data = swe.calc_ut(birth_jd, pid, swe.FLG_SIDEREAL | swe.FLG_SPEED)[0]
+            lon = pos_data[0] % 360
+            sign, degrees = lahiri_hora_get_sign_and_degrees(lon)
+            retrograde = 'R' if pos_data[3] < 0 else ''
+            house = lahiri_hora_calculate_house(sign, hl_sign)
+            nak, nak_lord, pada = lahiri_hora_nakshatra_and_pada(lon)
+            positions[planet] = {
+                "degrees": round(degrees, 4), "sign": sign, "retrograde": retrograde,
+                "house": house, "nakshatra": nak, "nakshatra_lord": nak_lord, "pada": pada
+            }
+
+        rahu_lon = positions['Rahu']['degrees'] + (SIGNS.index(positions['Rahu']['sign']) * 30)
+        ketu_lon = (rahu_lon + 180) % 360
+        ketu_sign, ketu_degrees = lahiri_hora_get_sign_and_degrees(ketu_lon)
+        ketu_nak, ketu_nak_lord, ketu_pada = lahiri_hora_nakshatra_and_pada(ketu_lon)
+        positions['Ketu'] = {
+            "degrees": round(ketu_degrees, 4), "sign": ketu_sign, "retrograde": "",
+            "house": lahiri_hora_calculate_house(ketu_sign, hl_sign),
+            "nakshatra": ketu_nak, "nakshatra_lord": ketu_nak_lord, "pada": ketu_pada
+        }
+
+        response = {
+            "hora_lagna": {
+                "sign": hl_sign, "degrees": round(hl_degrees, 4),
+                "nakshatra": hl_nak, "nakshatra_lord": hl_nak_lord, "pada": hl_pada
+            },
+            "planets": positions
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Error in calculation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 

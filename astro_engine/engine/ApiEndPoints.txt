@@ -31,6 +31,7 @@ http://localhost:5000/raman/calculate_kp_bhava      (vishun(rahu/kethu))
 http://localhost:5000/raman/calculate_equal_bhava_lagna
 http://localhost:5000/raman/calculate_karkamsha_d1
 http://localhost:5000/raman/calculate_d9_karkamsha
+http://localhost:5000/raman/calculate_bhava_lagna
 
 
 http://localhost:5000/raman/calculate_bhinnashtakavarga
@@ -77,6 +78,7 @@ http://localhost:5000/lahiri/calculate_kp_bhava
 http://localhost:5000/lahiri/calculate_equal_bhava_lagna
 http://localhost:5000/lahiri/calculate_d1_karkamsha
 http://localhost:5000/lahiri/calculate_karkamsha_d9
+http://localhost:5000/lahiri/calculate_bhava_lagna
 
 http://localhost:5000/lahiri/synastry
 http://localhost:5000/lahiri/composite 
@@ -110,6 +112,7 @@ http://localhost:5000/kp/calculate_maha_antar_pratyantar_pran_dasha
 
 
 http://localhost:5000/kp/shodasha_varga_signs
+http://localhost:5000//kp/kp_horary
 
 
 
