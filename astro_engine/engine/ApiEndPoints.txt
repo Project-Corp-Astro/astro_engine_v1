@@ -21,6 +21,7 @@ http://localhost:5000/raman/calculate_d16
 http://localhost:5000/raman/calculate_d20
 http://localhost:5000/raman/calculate_d24
 http://localhost:5000/raman/calculate_d27_chart
+http://localhost:5000/raman/calculate_d30_chart
 http://localhost:5000/raman/calculate_d40
 http://localhost:5000/raman/calculate_d45  issue(goutham)
 http://localhost:5000/raman/calculate_d60
@@ -32,6 +33,7 @@ http://localhost:5000/raman/calculate_equal_bhava_lagna
 http://localhost:5000/raman/calculate_karkamsha_d1
 http://localhost:5000/raman/calculate_d9_karkamsha
 http://localhost:5000/raman/calculate_bhava_lagna
+http://localhost:5000/raman/calculate_hora_lagna
 
 
 http://localhost:5000/raman/calculate_bhinnashtakavarga
@@ -79,6 +81,7 @@ http://localhost:5000/lahiri/calculate_equal_bhava_lagna
 http://localhost:5000/lahiri/calculate_d1_karkamsha
 http://localhost:5000/lahiri/calculate_karkamsha_d9
 http://localhost:5000/lahiri/calculate_bhava_lagna
+http://localhost:5000/lahiri/calculate_hora_lagna
 
 http://localhost:5000/lahiri/synastry
 http://localhost:5000/lahiri/composite 

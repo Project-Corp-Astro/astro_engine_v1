@@ -1110,7 +1110,7 @@ def calculate_karkamsha_endpoint():
 
 #  Hora Lagna Chart :
 
-@bp.route('/calculate_hora_lagna', methods=['POST'])
+@bp.route('/lahiri/calculate_hora_lagna', methods=['POST'])
 def lahiri_hora_calculate_hora_lagna_chart():
     try:
         data = request.get_json()

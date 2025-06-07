@@ -4,7 +4,9 @@ from datetime import datetime
 import logging
 from venv import logger
 import swisseph as swe
+swe.set_ephe_path('astro_api/ephe')
 
+from astro_engine.engine.lagnaCharts.RamanHoraLagna import raman_hora_calculate_chart
 from astro_engine.engine.lagnaCharts.RamanBavaLagna import PLANET_IDS, raman_bava_calculate_bhava_lagna, raman_bava_calculate_house, raman_bava_calculate_sunrise, raman_bava_get_julian_day, raman_bava_get_sign_and_degrees, raman_bava_nakshatra_and_pada
 from astro_engine.engine.ashatakavargha.RamanVarghaSigns import CHARTS, SIGNS, raman_sign_get_sidereal_asc, raman_sign_get_sidereal_positions, raman_sign_julian_day, raman_sign_local_to_utc, raman_sign_varga_sign
 from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_d30_assign_houses, raman_d30_calculate_sidereal_longitudes, raman_d30_format_degree, raman_d30_get_d30_sign_and_degree, raman_d30_get_julian_day, raman_d30_get_nakshatra_and_pada
@@ -12,7 +14,7 @@ from astro_engine.engine.ramanDivisionals.TrimshamshaD30 import raman_d30_assign
 
 
 
-swe.set_ephe_path('astro_api/ephe')
+
 
 from astro_engine.engine.ashatakavargha.RamanBinnastakvargha import raman_binnastakavargha
 from astro_engine.engine.ashatakavargha.RamanSarvastakavargha import raman_sarvathakavargha
@@ -704,9 +706,7 @@ def calculate_d27_chart():
 #  Trimshamsha D30 
 
 
-
-
-@rl.route('/calculate_d30_chart', methods=['POST'])
+@rl.route('/raman/calculate_d30_chart', methods=['POST'])
 def calculate_d30_chart():
     try:
         data = request.get_json()
@@ -919,6 +919,30 @@ def raman_bava_calculate_bhava_lagna_chart():
             "planets": positions
         }
         return jsonify(response), 200
+
+    except Exception as e:
+        logging.error(f"Error in calculation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+
+#  Hora Lagna Chart .
+@rl.route('/raman/calculate_hora_lagna', methods=['POST'])
+def raman_hora_calculate_hora_lagna_chart():
+    try:
+        data = request.get_json()
+        required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+        if not data or not all(k in data for k in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        birth_date = data['birth_date']
+        birth_time = data['birth_time']
+        lat = float(data['latitude'])
+        lon = float(data['longitude'])
+        tz_offset = float(data['timezone_offset'])
+
+        result = raman_hora_calculate_chart(birth_date, birth_time, lat, lon, tz_offset)
+        return jsonify(result), 200
 
     except Exception as e:
         logging.error(f"Error in calculation: {str(e)}")
