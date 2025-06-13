@@ -132,7 +132,7 @@ def lahairi_Khavedamsha(birth_date, birth_time, latitude, longitude, tz_offset):
             "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d40_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Lahiri",
             "chart_type": "Khavedamsa (D40)",

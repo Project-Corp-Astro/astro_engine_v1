@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-import logging
-from venv import logger
+# import logging
+# from venv import logger
 import swisseph as swe
 
 swe.set_ephe_path('astro_api/ephe')
@@ -113,7 +113,7 @@ def natal_chart():
             },
             "planetary_positions": planetary_positions_json,
             "ascendant": ascendant_json,
-            "house_signs": house_signs_json,
+            # "house_signs": house_signs_json,
             "notes": {
                 "ayanamsa": "Lahiri",
                 "ayanamsa_value": f"{chart_data['ayanamsa_value']:.6f}",
@@ -827,18 +827,18 @@ def calculate_sripathi_bhava():
         longitude = float(data['longitude'])
         tz_offset = float(data['timezone_offset'])
 
-        logger.debug(f"Input: Date={birth_date}, Time={birth_time}, Lat={latitude}, Lon={longitude}, TZ Offset={tz_offset}")
+        # logger.debug(f"Input: Date={birth_date}, Time={birth_time}, Lat={latitude}, Lon={longitude}, TZ Offset={tz_offset}")
 
         # Call the calculation function
         response = lahairi_sripathi_bava(birth_date, birth_time, latitude, longitude, tz_offset)
-        logger.debug(f"Output JSON: {response}")
+        # logger.debug(f"Output JSON: {response}")
         return jsonify(response), 200
 
     except ValueError as ve:
-        logger.error(f"Invalid input format: {str(ve)}")
+        # logger.error(f"Invalid input format: {str(ve)}")
         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
     except Exception as e:
-        logger.error(f"Calculation error: {str(e)}")
+        # logger.error(f"Calculation error: {str(e)}")
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
 
 
@@ -873,7 +873,7 @@ def calculate_kp_bhava():
 
 
 
-# Equal Bhava Lagna
+# Bhava Lagna
 
 
 @bp.route('/lahiri/calculate_bhava_lagna', methods=['POST'])
@@ -932,12 +932,12 @@ def bava_calculate_bhava_lagna_chart():
         return jsonify(response), 200
 
     except Exception as e:
-        logging.error(f"Error in calculation: {str(e)}")
+        # logging.error(f"Error in calculation: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 
 
-
+# Equal Bhava Lagna
 @bp.route('/lahiri/calculate_equal_bhava_lagna', methods=['POST'])
 def calculate_equal_bhava_lagna():
     """API endpoint to calculate Equal Bhava Lagna, house cusps, and planetary positions."""
@@ -966,25 +966,6 @@ def calculate_equal_bhava_lagna():
 
     except ValueError as ve:
         return jsonify({"error": f"Invalid input: {str(ve)}"}), 400
-    except Exception as e:
-        return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
-
-# Bhava Lagna
-@bp.route('/lahiri/calculate_bhava_lagna', methods=['POST'])
-def calculate_bhava_lagna():
-    try:
-        data = request.get_json()
-        user_name = data['user_name']
-        birth_date = data['birth_date']
-        birth_time = data['birth_time']
-        latitude = float(data['latitude'])
-        longitude = float(data['longitude'])
-        timezone_offset = float(data['timezone_offset'])
-
-        response = lahairi_bava_lagan(birth_date, birth_time, latitude, longitude, timezone_offset)
-        response["user_name"] = user_name
-        return jsonify(response), 200
-
     except Exception as e:
         return jsonify({"error": f"Calculation failed: {str(e)}"}), 500
 

@@ -134,7 +134,7 @@ def lahairi_Chaturvimshamsha(birth_date, birth_time, latitude, longitude, tz_off
             "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d24_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Lahiri",
             "chart_type": "Chaturvimshamsha (D24)",

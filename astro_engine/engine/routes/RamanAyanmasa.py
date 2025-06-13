@@ -1349,7 +1349,6 @@ def calculate_antardasha_dasha():
 
 #  Vimshottari of antar dasha and Pratyantardashas Dasha 
 
-
 @rl.route('/raman/calculate_maha_antar_pratyantar_dasha', methods=['POST'])
 def calculate_prataytar_dasha():
     """Calculate Vimshottari Dasha based on birth details."""

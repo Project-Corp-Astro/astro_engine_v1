@@ -176,7 +176,7 @@ def lahairi_Chaturthamsha(data):
     response = {
         "planetary_positions": planetary_positions_json,
         "ascendant": ascendant_json,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "notes": {
             "ayanamsa": "Lahiri",
             "ayanamsa_value": f"{ayanamsa_value:.6f}",

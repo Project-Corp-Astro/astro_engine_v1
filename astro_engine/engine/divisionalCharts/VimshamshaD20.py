@@ -180,7 +180,7 @@ def lahairi_Vimshamsha(birth_date, birth_time, latitude, longitude, timezone_off
             "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d20_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Lahiri",
             "chart_type": "Vimsamsa (D20)",

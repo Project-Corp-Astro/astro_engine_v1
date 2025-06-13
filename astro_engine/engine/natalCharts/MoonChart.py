@@ -231,7 +231,7 @@ def lahairi_moon_chart(data):
             "nakshatra": moon_nakshatra,
             "pada": moon_pada
         },
-        "house_cusps": house_data,
+        # "house_cusps": house_data,
         "planetary_positions": planetary_data,
         "metadata": {
             "ayanamsa": "Lahiri",

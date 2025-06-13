@@ -229,7 +229,7 @@ def lahairi_Shashtiamsha(birth_date, birth_time, latitude, longitude, tz_offset,
             "pada": asc_nakshatra_pada["pada"]
         },
         "planetary_positions": d60_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Lahiri",
             "chart_type": "Shashtiamsha (D60)",

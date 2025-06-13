@@ -55,7 +55,6 @@ http://localhost:5000/lahiri/natal
 http://localhost:5000/lahiri/transit
 http://localhost:5000/lahiri/calculate_moon_chart
 http://localhost:5000/lahiri/calculate_sun_chart
-http://localhost:5000/lahiri/calculate_sripathi_bhava
 http://localhost:5000/lahiri/calculate_sudarshan_chakra
 
 http://localhost:5000/lahiri/calculate_d2_hora

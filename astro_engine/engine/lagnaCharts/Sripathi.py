@@ -2,6 +2,8 @@ import swisseph as swe
 from datetime import datetime, timedelta
 import math
 
+swe.set_sid_mode(swe.SIDM_LAHIRI)
+
 # Constants
 SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
 PLANET_IDS = {
@@ -30,7 +32,7 @@ def get_julian_day(date_str, time_str, tz_offset):
 
 def calculate_ascendant(jd, lat, lon):
     """Calculate the ascendant longitude and house cusps using Sripathi Bhava system."""
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'S', flags=swe.FLG_SIDEREAL)  # 'S' for Sripathi
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', flags=swe.FLG_SIDEREAL)  # 'S' for Sripathi
     asc_lon = ascmc[0] % 360  # Ascendant longitude
     asc_sign_index = math.floor(asc_lon / 30)
     return asc_lon, asc_sign_index, cusps
@@ -38,6 +40,7 @@ def calculate_ascendant(jd, lat, lon):
 def calculate_house(planet_lon, cusps):
     """Determine house number using Sripathi Bhava cusps."""
     planet_lon = planet_lon % 360
+
     for i in range(12):
         cusp_start = cusps[i] % 360
         cusp_end = cusps[(i + 1) % 12] % 360

@@ -183,7 +183,7 @@ def lahrir_sun_chart(data):
             "nakshatra": sun_nakshatra,
             "pada": sun_pada
         },
-        "house_cusps": house_data,
+        # "house_cusps": house_data,
         "planetary_positions": planetary_data,
         "metadata": {
             "ayanamsa": "Lahiri",

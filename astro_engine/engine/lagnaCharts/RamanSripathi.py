@@ -30,7 +30,7 @@ def get_julian_day(date_str, time_str, tz_offset):
 
 def calculate_ascendant(jd, lat, lon):
     """Calculate the ascendant longitude and house cusps using Sripathi Bhava system."""
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'S', flags=swe.FLG_SIDEREAL)  # 'S' for Sripathi
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', flags=swe.FLG_SIDEREAL)  # 'S' for Sripathi
     asc_lon = ascmc[0] % 360  # Ascendant longitude
     asc_sign_index = math.floor(asc_lon / 30)
     return asc_lon, asc_sign_index, cusps

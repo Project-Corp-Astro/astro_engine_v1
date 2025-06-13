@@ -161,7 +161,7 @@ def lahairi_Dwadashamsha(birth_date, birth_time, latitude, longitude, timezone_o
     response = {
         "d12_ascendant": d12_asc,
         "planetary_positions": d12_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "notes": {
             "ayanamsa": "Lahiri",
             "chart_type": "Dwadasamsa (D12)",

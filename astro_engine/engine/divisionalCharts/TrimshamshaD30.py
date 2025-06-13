@@ -188,9 +188,9 @@ def lahiri_trimshamsha_D30(birth_date, birth_time, latitude, longitude, tz_offse
         d30_positions[planet] = {
             'sign': sign,
             'degree': format_degree(degree),
-            'natal_sign': natal_sign,
-            'natal_degree': format_degree(natal_deg),
-            'natal_longitude': round(longitude, 4),
+            # 'natal_sign': natal_sign,
+            # 'natal_degree': format_degree(natal_deg),
+            # 'natal_longitude': round(longitude, 4),
             'retrograde': data.get('retrograde', None),
             'nakshatra': data['nakshatra'],
             'pada': data['pada']

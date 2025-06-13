@@ -237,7 +237,7 @@ def lahairi_Dashamsha(data):
         response = {
             "planetary_positions": planetary_positions_json,
             "ascendant": ascendant_json,
-            "house_signs": house_signs,
+            # "house_signs": house_signs,
             "notes": {
                 "ayanamsa": "Lahiri",
                 "chart_type": "Dashamsha (D10)",

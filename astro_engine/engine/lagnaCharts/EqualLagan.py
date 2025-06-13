@@ -255,7 +255,7 @@ def lahairi_equal_bava(birth_date, birth_time, latitude, longitude, tz_offset):
             "sign": SIGNS[ascendant_sign_index]
         },
         "planetary_positions": planetary_data,
-        "house_cusps": house_data,
+        # "house_cusps": house_data,
         "metadata": {
             "ayanamsa": "Lahiri",
             "house_system": "Equal Bhava (Whole Sign based)",
