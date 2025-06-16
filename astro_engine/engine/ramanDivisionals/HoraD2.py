@@ -41,7 +41,7 @@ def get_julian_day(date_str, time_str, tz_offset):
 
 def calculate_planet_data(jd, planet_code):
     """Calculate sidereal longitude and retrograde status of a planet."""
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    swe.set_sid_mode(swe.SIDM_RAMAN)
     pos, ret = swe.calc_ut(jd, planet_code, swe.FLG_SIDEREAL | swe.FLG_SPEED)
     if ret < 0:
         raise ValueError(f"Error calculating position for planet code {planet_code}")

@@ -167,7 +167,7 @@ def raman_Chaturthamsha_D4(birth_date, birth_time, latitude, longitude, timezone
         response = {
             "planetary_positions": planetary_positions_json,
             "ascendant": ascendant_json,
-            "house_signs": house_signs,
+            # "house_signs": house_signs,
             "notes": {
                 "ayanamsa": "Raman",
                 "ayanamsa_value": f"{ayanamsa_value:.6f}",

@@ -33,7 +33,7 @@ from astro_engine.engine.lagnaCharts.EqualLagan import SIGNS,  lahairi_equal_bav
 from astro_engine.engine.lagnaCharts.KPLagna import  lahairi_kp_bava
 from astro_engine.engine.lagnaCharts.LahiriKarkamshaD1 import lahiri_karkamsha_d1
 from astro_engine.engine.lagnaCharts.LahiriKarkamshaD9 import lahiri_karkamsha_D9
-from astro_engine.engine.lagnaCharts.Sripathi import lahairi_sripathi_bava
+from astro_engine.engine.lagnaCharts.Sripathi import calculate_ascendant_sri, get_nakshatra_pada_sri, get_planet_data_sri
 from astro_engine.engine.natalCharts.natal import lahairi_natal,  longitude_to_sign, format_dms
 from astro_engine.engine.natalCharts.transit import  lahairi_tranist
 from astro_engine.engine.numerology.CompositeChart import  lahairi_composite
@@ -809,9 +809,43 @@ def navamsa_chart():
 
 
 # Sripathi Bhava
+# @bp.route('/lahiri/calculate_sripathi_bhava', methods=['POST'])
+# def calculate_sripathi_bhava():
+#     """Compute the Sripathi Bhava Chart and return JSON output."""
+#     try:
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "No JSON data provided"}), 400
+        
+#         required_fields = ['birth_date', 'birth_time', 'latitude', 'longitude', 'timezone_offset']
+#         if not all(key in data for key in required_fields):
+#             return jsonify({"error": "Missing required parameters"}), 400
+
+#         birth_date = data['birth_date']
+#         birth_time = data['birth_time']
+#         latitude = float(data['latitude'])
+#         longitude = float(data['longitude'])
+#         tz_offset = float(data['timezone_offset'])
+
+#         # logger.debug(f"Input: Date={birth_date}, Time={birth_time}, Lat={latitude}, Lon={longitude}, TZ Offset={tz_offset}")
+
+#         # Call the calculation function
+#         response = lahairi_sripathi_bava(birth_date, birth_time, latitude, longitude, tz_offset)
+#         # logger.debug(f"Output JSON: {response}")
+#         return jsonify(response), 200
+
+#     except ValueError as ve:
+#         # logger.error(f"Invalid input format: {str(ve)}")
+#         return jsonify({"error": f"Invalid input format: {str(ve)}"}), 400
+#     except Exception as e:
+#         # logger.error(f"Calculation error: {str(e)}")
+#         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
+
+
+
 @bp.route('/lahiri/calculate_sripathi_bhava', methods=['POST'])
 def calculate_sripathi_bhava():
-    """Compute the Sripathi Bhava Chart and return JSON output."""
+    """Compute the Sripathi Bhava Chart and return JSON output with nakshatra and pada."""
     try:
         data = request.get_json()
         if not data:
@@ -829,8 +863,23 @@ def calculate_sripathi_bhava():
 
         # logger.debug(f"Input: Date={birth_date}, Time={birth_time}, Lat={latitude}, Lon={longitude}, TZ Offset={tz_offset}")
 
-        # Call the calculation function
-        response = lahairi_sripathi_bava(birth_date, birth_time, latitude, longitude, tz_offset)
+        jd_ut = get_julian_day(birth_date, birth_time, tz_offset)
+        asc_lon, asc_sign_index, cusps = calculate_ascendant_sri(jd_ut, latitude, longitude)
+        asc_sign = SIGNS[asc_sign_index]
+        asc_degrees = asc_lon % 30
+        asc_nakshatra, asc_pada = get_nakshatra_pada_sri(asc_lon)
+
+        natal_positions = get_planet_data_sri(jd_ut, asc_lon, cusps)
+
+        response = {
+            "ascendant": {
+                "sign": asc_sign,
+                "degrees": round(asc_degrees, 4),
+                "nakshatra": asc_nakshatra,
+                "pada": asc_pada
+            },
+            "planets": natal_positions
+        }
         # logger.debug(f"Output JSON: {response}")
         return jsonify(response), 200
 
@@ -840,8 +889,6 @@ def calculate_sripathi_bhava():
     except Exception as e:
         # logger.error(f"Calculation error: {str(e)}")
         return jsonify({"error": f"Calculation error: {str(e)}"}), 500
-
-
 
 
 # KP Bhava

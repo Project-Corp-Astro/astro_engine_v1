@@ -118,7 +118,7 @@ def natal_chart():
             },
             "planetary_positions": planetary_positions_json,
             "ascendant": ascendant_json,
-            "house_signs": house_signs_json,
+            # "house_signs": house_signs_json,
             "notes": {
                 "ayanamsa": "Lahiri",
                 "ayanamsa_value": f"{chart_data['ayanamsa_value']:.6f}",
@@ -740,9 +740,9 @@ def calculate_d30_chart():
                 'degree': raman_d30_format_degree(degree),
                 'retrograde': pdata['retrograde'],
                 'nakshatra': nak,
-                'natal_sign': natal_sign,
-                'natal_degree': raman_d30_format_degree(natal_deg),
-                'natal_longitude': round(longitude, 4),
+                # 'natal_sign': natal_sign,
+                # 'natal_degree': raman_d30_format_degree(natal_deg),
+                # 'natal_longitude': round(longitude, 4),
                 'pada': pada,
                 'd30_sign_index': d30_sign_index
             }
@@ -756,7 +756,7 @@ def calculate_d30_chart():
 
         response = {
             "user_name": data.get('user_name', 'Unknown'),
-            "natal_positions": {p: natal_positions[p]['longitude'] for p in natal_positions},
+            # "natal_positions": {p: natal_positions[p]['longitude'] for p in natal_positions},
             "d30_chart": d30_positions
         }
         return jsonify(response), 200

@@ -120,7 +120,7 @@ def raman_Chaturvimshamsha_D24(birth_date, birth_time, latitude, longitude, tz_o
     response = {
         "d24_ascendant": d24_ascendant,
         "planetary_positions": d24_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Raman",
             "chart_type": "Chaturvimshamsha (D24)",

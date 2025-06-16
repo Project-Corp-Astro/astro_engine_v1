@@ -129,7 +129,7 @@ def raman_Khavedamsha_D40(birth_date, birth_time, latitude, longitude, timezone_
     response = {
         "d40_ascendant": d40_asc,
         "planetary_positions": d40_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Raman",
             "chart_type": "Khavedamsa (D40)",

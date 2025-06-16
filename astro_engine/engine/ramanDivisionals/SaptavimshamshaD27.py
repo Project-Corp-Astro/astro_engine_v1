@@ -16,7 +16,7 @@ PLANET_CODES = {
     "Jupiter": swe.JUPITER,
     "Venus": swe.VENUS,
     "Saturn": swe.SATURN,
-    "Rahu": swe.MEAN_NODE
+    "Rahu": swe.TRUE_NODE
 }
 
 NAKSHATRA_NAMES = [

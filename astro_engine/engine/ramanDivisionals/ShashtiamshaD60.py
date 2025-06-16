@@ -145,7 +145,7 @@ def raman_Shashtiamsha_D60(birth_date, birth_time, latitude, longitude, tz_offse
     chart_data = {
         "d60_ascendant": d60_asc,
         "planetary_positions": d60_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Raman",
             "chart_type": "Shashtiamsha (D60)",

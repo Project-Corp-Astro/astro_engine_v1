@@ -137,7 +137,7 @@ def raman_Akshavedamsha_D45(birth_date, birth_time, latitude, longitude, timezon
         "user_name": user_name,
         "d45_ascendant": d45_asc,
         "planetary_positions": d45_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Raman",
             "chart_type": "Akshavedamsa (D45)",

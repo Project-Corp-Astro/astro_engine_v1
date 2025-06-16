@@ -153,7 +153,7 @@ def raman_Dwadashamsha_D12(birth_date, birth_time, latitude, longitude, timezone
     response = {
         "d12_ascendant": d12_asc,
         "planetary_positions": d12_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "notes": {
             "ayanamsa": "Raman",
             "chart_type": "Dwadasamsa (D12)",

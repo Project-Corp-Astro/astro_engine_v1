@@ -206,8 +206,8 @@ def raman_kp_bava(user_name, birth_date, birth_time, latitude, longitude, tz_off
     response = {
         'user_name': user_name,
         'ascendant': ascendant,
-        'house_cusps': cusp_details,
+        # 'house_cusps': cusp_details,
         'planetary_positions': planet_details,
-        'significators': significators
+        # 'significators': significators
     }
     return response

@@ -151,7 +151,7 @@ def raman_equal_bava_lagnas(birth_date, birth_time, latitude, longitude, tz_offs
             "pada": get_pada(ascendant)
         },
         "planetary_positions": planetary_data,
-        "house_cusps": house_data,
+        # "house_cusps": house_data,
         "metadata": {
             "ayanamsa": "Raman",
             "house_system": "Equal Bhava (Whole Sign based)",

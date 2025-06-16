@@ -111,7 +111,7 @@ def raman_Vimshamsha_D20(birth_date, birth_time, latitude, longitude, timezone_o
         "user_name": user_name,
         "d20_ascendant": d20_asc,
         "planetary_positions": d20_positions,
-        "house_signs": house_signs,
+        # "house_signs": house_signs,
         "metadata": {
             "ayanamsa": "Raman",
             "chart_type": "Vimsamsa (D20)",
