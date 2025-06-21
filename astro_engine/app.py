@@ -127,7 +127,7 @@ if __name__ == "__main__":
             except ImportError:
                 print("Waitress is not installed. Please install it with 'pip install waitress'.")
                 sys.exit(1)
-            serve(app, host='0.0.0.0', port=5002)
+            serve(app, host='0.0.0.0', port=5000)
         else:
             # Use Gunicorn on Unix-like systems
             try:
@@ -151,7 +151,7 @@ if __name__ == "__main__":
                     return self.application
 
             options = {
-                'bind': '0.0.0.0:5002',     # Bind to all interfaces on port 5002
+                'bind': '0.0.0.0:5000',     # Bind to all interfaces on port 5000
                 'workers': 2,               # Number of worker processes
                 'worker_class': 'gthread',  # Use threaded workers
                 'threads': 4,               # Number of threads per worker
@@ -160,4 +160,4 @@ if __name__ == "__main__":
             StandaloneApplication(app, options).run()
     else:
         # Development mode with Flask's built-in server
-        app.run(debug=True, port=5002)
+        app.run(debug=True, port=5000)
