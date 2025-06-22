@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  astro-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount the ephemeris data to avoid including large files in the image
+      - ./astro_engine/ephe:/app/astro_engine/ephe
+    restart: unless-stopped
