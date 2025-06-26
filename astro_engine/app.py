@@ -110,6 +110,10 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 logging.basicConfig(level=logging.DEBUG)
 
+@app.route("/", methods=["GET"])
+def index():
+    return {"message": "Astro Engine is running 🚀"}, 200
+
 # Set Swiss Ephemeris path (adjust path as needed)
 swe.set_ephe_path('astro_engine/ephe')
 
