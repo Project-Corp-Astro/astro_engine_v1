@@ -1,10 +1,10 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
 # Install dependencies
-COPY astro_engine/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY astro_engine/requirementsDev.txt .
+RUN pip install --no-cache-dir -r requirementsDev.txt
 
 # Copy the application code
 COPY astro_engine /app/astro_engine

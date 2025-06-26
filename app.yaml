@@ -1,0 +1,27 @@
+runtime: python311
+entrypoint: gunicorn -b :$PORT astro_engine.app:app
+
+# Optional: Set environment variables here
+# env_variables:
+#   EXAMPLE_VAR: "value"
+
+# Optional: automatic scaling
+automatic_scaling:
+  min_num_instances: 1
+  max_num_instances: 3
+  cool_down_period_sec: 60
+  cpu_utilization:
+    target_utilization: 0.65
+
+# Optional: health checks
+health_check:
+  enable_health_check: True
+  check_interval_sec: 30
+  timeout_sec: 4
+  unhealthy_threshold: 2
+  healthy_threshold: 2
+
+# Optional: handlers (static files, etc.)
+# handlers:
+#   - url: /static
+#     static_dir: static
